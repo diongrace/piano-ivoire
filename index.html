@@ -183,6 +183,22 @@ select.bt{appearance:none;-webkit-appearance:none;padding-right:26px;background-
 .bt.plein{background:var(--laiton);color:#1b1408;border-color:var(--laiton)}
 .c-prompteur{font-family:var(--affiche);font-size:19px;line-height:1.25;color:var(--laiton-clair);flex:1;min-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
+/* ---------- Arrangeur ---------- */
+.arr{flex:none;display:flex;flex-direction:column;gap:6px;background:var(--laque-2);border-radius:10px;padding:8px;min-width:0}
+.a-ligne{display:flex;gap:6px;align-items:center;overflow-x:auto;scrollbar-width:none;flex-wrap:nowrap}
+.a-ligne::-webkit-scrollbar{display:none}
+.a-ligne > *{flex:none}
+.a-accord{margin-left:auto;font-family:var(--affiche);font-size:30px;line-height:1;color:var(--laiton-clair);min-width:84px;text-align:right;padding-right:4px}
+.a-sections button{min-width:46px}
+.a-sections button.attente{box-shadow:inset 0 0 0 2px var(--laiton);animation:clignote .5s infinite alternate}
+@keyframes clignote{to{opacity:.5}}
+@media (prefers-reduced-motion:reduce){.a-sections button.attente{animation:none}}
+.a-vol{display:inline-flex;gap:6px;align-items:center;color:var(--texte-2);font-weight:600;font-size:13px}
+.a-vol input{width:110px}
+.blanche.gauche{background:linear-gradient(180deg,#d6dbdf 0%,#e3e7ea 12%,#e3e7ea 90%,#c6ccd1 100%)}
+.blanche.gauche.appuyee{background:linear-gradient(180deg,#b5c0ca 0%,#ccd5dc 100%)}
+.noire.gauche{background:linear-gradient(180deg,#27313b 0%,#141a20 70%,#07090b 100%)}
+
 /* ---------- Menu ---------- */
 .voile{position:fixed;inset:0;background:#000a;z-index:20}
 .menu{position:fixed;top:0;bottom:0;left:0;width:min(440px,100%);background:var(--laque-2);z-index:21;overflow-y:auto;overscroll-behavior:contain;
@@ -220,9 +236,10 @@ input[type=range]{accent-color:var(--laiton);width:150px}
       <button type="button" id="mode-deux" data-mode="deux" aria-pressed="false">2 mains</button>
       <button type="button" id="mode-accords" data-mode="accords" aria-pressed="false">Accords</button>
       <button type="button" id="mode-composer" data-mode="composer" aria-pressed="false">Composer</button>
+      <button type="button" id="mode-arrangeur" data-mode="arrangeur" aria-pressed="false">Arrangeur</button>
     </div>
     <select class="bt masque-etroit" id="son-rapide" aria-label="Son"></select>
-    <button type="button" class="bt" id="rythme-lancer" aria-pressed="false" aria-label="Lancer le rythme">▶ <span id="rythme-nom-court">Rythme</span></button>
+    <button type="button" class="bt" id="rythme-lancer" aria-pressed="false" aria-label="Lancer le rythme">▶ <span id="rythme-nom-court" class="masque-etroit">Rythme</span></button>
     <span class="tempo">
       <button type="button" class="bt carre" id="bpm-moins" aria-label="Ralentir">−</button>
       <output id="bpm-aff">90 bpm</output>
@@ -378,7 +395,8 @@ input[type=range]{accent-color:var(--laiton);width:150px}
     mode: "piano", son: "concert", volume: 85, reverb: 22, nom: "fr", clavier: "azerty", taille: 14,
     tonalite: 0, majeur: true, gamme: false, transpo: 0,
     style: "louange", bpm: 90, volRythme: 70,
-    debuts: { piano: 48, haut: 60, bas: 36, accords: 55, compo: 55 }, chantId: null
+    debuts: { piano: 48, haut: 60, bas: 36, accords: 55, compo: 55, arr: 48 }, chantId: null,
+    arrStyle: "louange", doigte: "complet", couche: false, split: 60, volAccomp: 70, arrSync: true
   };
   try {
     const lu = JSON.parse(localStorage.getItem(CLE) || "{}");
@@ -620,8 +638,23 @@ input[type=range]{accent-color:var(--laiton);width:150px}
     }
     return null;
   }
+  // Même reconnaissance, mais renvoie la fondamentale et la qualité
+  function analyser(midis) {
+    const pcs = [...new Set(midis.map(m => m % 12))];
+    if (pcs.length < 3) return null;
+    const ordre = ["maj", "min", "7", "m7", "maj7", "6", "dim", "m7b5", "sus4", "sus2", "aug"];
+    for (const q of ordre) {
+      const iv = QUALITES[q].iv; if (iv.length !== pcs.length) continue;
+      for (const rac of pcs) {
+        const rel = pcs.map(p => (p - rac + 12) % 12).sort((a, b) => a - b);
+        if (rel.join() === iv.join()) return { pc: rac, q };
+      }
+    }
+    return null;
+  }
   let accordAffiche = "";
   function majAccord() {
+    if (reglages.mode === "arrangeur") return;          // l'arrangeur affiche l'accord de la main gauche
     const actives = [...voix.entries()].filter(([c]) => !c.startsWith("d")).map(([, x]) => x.m);
     const nom = reconnaitre(actives);
     if (nom) accordAffiche = nom;
@@ -649,10 +682,12 @@ input[type=range]{accent-color:var(--laiton);width:150px}
     const mode = reglages.mode;
     compo = null;
     if (mode === "composer") construireComposeur();
+    if (mode === "arrangeur") construireArrangeur();
     const def = mode === "deux"
       ? [{ id: "haut", role: "Main droite" }, { id: "bas", role: "Main gauche" }]
       : mode === "accords" ? [{ id: "accords", role: "Mélodie" }]
-      : mode === "composer" ? [{ id: "compo", role: "Ta mélodie" }] : [{ id: "piano", role: "88 touches" }];
+      : mode === "composer" ? [{ id: "compo", role: "Ta mélodie" }]
+      : mode === "arrangeur" ? [{ id: "arr", role: "Accords | Mélodie" }] : [{ id: "piano", role: "88 touches" }];
     def.forEach(d => {
       const z = { id: d.id, role: d.role, debut: blanchePlusProche(reglages.debuts[d.id]) };
       const el = document.createElement("section"); el.className = "zone"; el.setAttribute("aria-label", d.role);
@@ -692,7 +727,7 @@ input[type=range]{accent-color:var(--laiton);width:150px}
     z.carte.addEventListener("pointercancel", () => { actif = false; });
   }
   function dessinerZones() { zones.forEach(dessinerZone); dessinerAideClavier(); }
-  function zoneClavierOrdi() { return zones.find(z => z.id === "haut" || z.id === "piano" || z.id === "accords" || z.id === "compo"); }
+  function zoneClavierOrdi() { return zones.find(z => z.id === "haut" || z.id === "piano" || z.id === "accords" || z.id === "compo" || z.id === "arr"); }
   function debutClavierOrdi(z) {
     const bas = BLANCHES[z.debut], haut = BLANCHES[z.debut + z.nb - 1];
     if (60 >= bas && 60 <= haut) return 60;
@@ -716,12 +751,13 @@ input[type=range]{accent-color:var(--laiton);width:150px}
       const lettre = lettres[m] ? `<span class="lettre">${lettres[m]}</span>` : "";
       const pc = m % 12;
       const point = reglages.gamme && gamme.includes(pc) ? `<span class="point${pc === reglages.tonalite ? " tonique" : ""}"></span>` : "";
+      const gcl = z.id === "arr" && m < reglages.split ? " gauche" : "";
       if (NOIRE[pc]) {
-        html += `<div class="touche noire" data-midi="${m}" role="button" aria-label="${nomDe(m, true)}" style="left:calc(${iB * larg}% - ${larg * 0.31}%);width:${larg * 0.62}%">${point}${lettre}</div>`;
+        html += `<div class="touche noire${gcl}" data-midi="${m}" role="button" aria-label="${nomDe(m, true)}" style="left:calc(${iB * larg}% - ${larg * 0.31}%);width:${larg * 0.62}%">${point}${lettre}</div>`;
       } else {
         const estDo = pc === 0;
         const nom = reglages.nom === "aucun" ? "" : `<span class="nom${estDo ? " do" : ""}">${nomDe(m, estDo)}</span>`;
-        html += `<div class="touche blanche" data-midi="${m}" role="button" aria-label="${nomDe(m, true)}">${point}${lettre}${nom}</div>`;
+        html += `<div class="touche blanche${gcl}" data-midi="${m}" role="button" aria-label="${nomDe(m, true)}">${point}${lettre}${nom}</div>`;
         iB++;
       }
     }
@@ -744,7 +780,9 @@ input[type=range]{accent-color:var(--laiton);width:150px}
     const z = zones.find(x => x.id === zoneId); if (!z) return;
     appuis.set(id, { zone: zoneId, m });
     marquer(z, m, true);
+    if (zoneId === "arr" && m < reglages.split) { gaucheAppui(m); return; }
     jouer(cleNote(zoneId, m), sortieDe(m), force);
+    if (zoneId === "arr" && reglages.couche) jouer("couche:" + m, sortieDe(m), force * 0.7, { son: "nappe" });
     verifierMelodie(m);
   }
   function relever(id) {
@@ -753,7 +791,9 @@ input[type=range]{accent-color:var(--laiton);width:150px}
     const encore = [...appuis.values()].some(x => x.zone === a.zone && x.m === a.m);
     if (encore) return;
     const z = zones.find(x => x.id === a.zone); if (z) marquer(z, a.m, false);
+    if (a.zone === "arr" && a.m < reglages.split) { gaucheLacher(a.m); return; }
     lacher(cleNote(a.zone, a.m));
+    if (a.zone === "arr") lacher("couche:" + a.m);
   }
   function forceDepuis(e, el) {
     const r = el.getBoundingClientRect();
@@ -921,6 +961,17 @@ input[type=range]{accent-color:var(--laiton);width:150px}
       o.frequency.setValueAtTime(fr * 1.25, t); o.frequency.exponentialRampToValueAtTime(fr, t + 0.03);
       g.gain.setValueAtTime(0.5 * v, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
       o.connect(g); o.start(t); stop(o, t + 0.3);
+    } else if (type === "tomH" || type === "tomB") {
+      const o = ctx.createOscillator(), fr = type === "tomH" ? 200 : 130;
+      o.frequency.setValueAtTime(fr * 1.4, t); o.frequency.exponentialRampToValueAtTime(fr, t + 0.08);
+      g.gain.setValueAtTime(0.6 * v, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+      o.connect(g); o.start(t); stop(o, t + 0.32);
+    } else if (type === "crash") {
+      const b = ctx.createBufferSource(), f = ctx.createBiquadFilter();
+      b.buffer = bruit(); b.loop = true; f.type = "highpass"; f.frequency.value = 5000;
+      b.connect(f); f.connect(g);
+      g.gain.setValueAtTime(0.35, t); g.gain.exponentialRampToValueAtTime(0.001, t + 1.8);
+      b.start(t); stop(b, t + 1.9);
     } else if (type === "clic" || type === "clicFort") {
       const o = ctx.createOscillator(); o.frequency.value = type === "clicFort" ? 2000 : 1400;
       g.gain.setValueAtTime(type === "clicFort" ? 0.5 : 0.32, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
@@ -943,6 +994,7 @@ input[type=range]{accent-color:var(--laiton);width:150px}
   }
   function lancerRythme() {
     if (!audio()) return;
+    if (arr.actif) arreterArr(false);
     rythme.actif = true; rythme.pas = 0; rythme.prochain = ctx.currentTime + 0.06;
     planifier(); rythme.minuterie = setInterval(planifier, 25);
     majRythmeUI();
@@ -1008,7 +1060,7 @@ input[type=range]{accent-color:var(--laiton);width:150px}
     bandeau.innerHTML = portrait + s.suite.map((n, i) => `<span class="puce ${i < position ? "faite" : i === position && modeMelodie !== "repos" ? "courante" : ""}">${nomDe(n.m, false)}</span>`).join("") +
       (info ? `<span class="info${bravo ? " bravo" : ""}">${info}</span>` : "");
   }
-  function zoneMelodie() { return zones.find(z => z.id === "haut" || z.id === "piano" || z.id === "accords" || z.id === "compo"); }
+  function zoneMelodie() { return zones.find(z => z.id === "haut" || z.id === "piano" || z.id === "accords" || z.id === "compo" || z.id === "arr"); }
   function montrerPlage(notes) {
     const z = zoneMelodie(); if (!z) return;
     const bas = Math.min(...notes), haut = Math.max(...notes);
@@ -1482,6 +1534,343 @@ input[type=range]{accent-color:var(--laiton);width:150px}
   });
 
   // =========================================================
+  // Mode Arrangeur : la main gauche donne l'accord, l'orchestre suit
+  // =========================================================
+  // Motifs : un caractère par pas.  Basse : R fondamentale, 5 quinte, 8 octave, 3 tierce, . silence.
+  // Accompagnement : X accord tenu, x accord court, a arpège (une note à la fois).
+  const ARR = {
+    louange: { nom: "Louange pop", bpm: 96, temps: 4, parTemps: 4,
+      A: { batterie: { kick: "x.....x.x.......", snare: "....x.......x...", hat: "x.x.x.x.x.x.x.x." }, basse: "R.....R.R...5...",
+           couches: [{ son: "concert", motif: "X.......X.......", force: 0.55 }] },
+      B: { batterie: { kick: "x.....x.x.....x.", snare: "....x.......x...", hat: "xxxxxxxxxxxxxxxx", clap: "....x.......x..." }, basse: "R..R..R.R..R5.8.",
+           couches: [{ son: "concert", motif: "X..x..X...x.X...", force: 0.6 }, { son: "nappe", motif: "X...............", force: 0.45 }] } },
+    adoration: { nom: "Adoration (ballade)", bpm: 68, temps: 4, parTemps: 4,
+      A: { batterie: { kick: "x.........x.....", rim: "....x.......x...", shaker: "..x...x...x...x." }, basse: "R.......5.......",
+           couches: [{ son: "concert", motif: "a.a.a.a.a.a.a.a.", force: 0.45 }, { son: "nappe", motif: "X...............", force: 0.4 }] },
+      B: { batterie: { kick: "x.....x...x.....", snare: "....x.......x...", hat: "x.x.x.x.x.x.x.x." }, basse: "R.....R.5.....8.",
+           couches: [{ son: "concert", motif: "X.......X...x...", force: 0.55 }, { son: "nappe", motif: "X...............", force: 0.5 }] } },
+    gospel: { nom: "Gospel 12/8", bpm: 64, temps: 4, parTemps: 3,
+      A: { batterie: { kick: "x.....x..x..", snare: "...x.....x..", hat: "x.xx.xx.xx.x" }, basse: "R.....5..R..",
+           couches: [{ son: "concert", motif: "X..x.xX..x.x", force: 0.55 }] },
+      B: { batterie: { kick: "x..x..x..x..", snare: "...x.....x..", hat: "xxxxxxxxxxxx", clap: "...x.....x.." }, basse: "R..R..5..8..",
+           couches: [{ son: "concert", motif: "X.xx.xX.xx.x", force: 0.6 }, { son: "orgue", motif: "X...........", force: 0.35 }] } },
+    afro: { nom: "Afro-louange 12/8", bpm: 108, temps: 4, parTemps: 3,
+      A: { batterie: { kick: "x.....x.....", cloche: "x.x.xx.x.x.x", congaB: "..x.....x...", shaker: "xxxxxxxxxxxx" }, basse: "R..R..5..R..",
+           couches: [{ son: "guitare", motif: "x.xx.xx.xx.x", force: 0.5 }] },
+      B: { batterie: { kick: "x..x..x..x..", cloche: "x.x.xx.x.x.x", congaB: "..x..x..x..x", congaH: ".x..x..x..x.", snare: "...x.....x.." }, basse: "R.RR..5.58..",
+           couches: [{ son: "guitare", motif: "x.xx.xx.xx.x", force: 0.55 }, { son: "concert", motif: "X.....X.....", force: 0.45 }] } },
+    makossa: { nom: "Makossa", bpm: 118, temps: 4, parTemps: 4,
+      A: { batterie: { kick: "x...x...x...x...", snare: "....x.......x...", hat: "..x...x...x...x.", congaH: "x..x..x...x.x..." }, basse: "R.R.5.R.R.R.5.8.",
+           couches: [{ son: "guitare", motif: "x.x.x.x.x.x.x.x.", force: 0.45 }] },
+      B: { batterie: { kick: "x...x...x...x...", snare: "....x..x....x...", hat: "x.x.x.x.x.x.x.x.", congaH: "x..x..x...x.x...", shaker: "xxxxxxxxxxxxxxxx" }, basse: "R.RR5.R.R.RR5.8.",
+           couches: [{ son: "guitare", motif: "xxx.x.xxx.x.x.x.", force: 0.5 }, { son: "concert", motif: "X.......X.......", force: 0.4 }] } },
+    rumba: { nom: "Rumba congolaise", bpm: 120, temps: 4, parTemps: 4,
+      A: { batterie: { kick: "x..x....x..x....", rim: "x..x..x...x.x...", shaker: "xxxxxxxxxxxxxxxx" }, basse: "R..5..R.R..5..8.",
+           couches: [{ son: "guitare", motif: "a.aa.a.aa.aa.a.a", force: 0.45 }] },
+      B: { batterie: { kick: "x..x....x..x....", snare: "....x.......x...", rim: "x..x..x...x.x...", hat: "x.x.x.x.x.x.x.x." }, basse: "R.R5..R.R.R5..8.",
+           couches: [{ son: "guitare", motif: "a.aa.a.aa.aa.a.a", force: 0.5 }, { son: "guitare", motif: "x...x...x...x...", force: 0.35 }] } },
+    zouk: { nom: "Zouk", bpm: 90, temps: 4, parTemps: 4,
+      A: { batterie: { kick: "x...x...x...x...", rim: "..x..x....x..x..", hat: "x.x.x.x.x.x.x.x." }, basse: "R..R..R.R..R..5.",
+           couches: [{ son: "concert", motif: "X.......X.......", force: 0.45 }, { son: "nappe", motif: "X...............", force: 0.35 }] },
+      B: { batterie: { kick: "x...x...x...x...", snare: "...x..x....x..x.", hat: "xxxxxxxxxxxxxxxx" }, basse: "R..R..R.R..R..58",
+           couches: [{ son: "concert", motif: "x..x..x.x..x..x.", force: 0.5 }, { son: "nappe", motif: "X...............", force: 0.4 }] } },
+    sixhuit: { nom: "Lent 6/8", bpm: 58, temps: 2, parTemps: 3,
+      A: { batterie: { kick: "x.....", rim: "...x..", shaker: "xxxxxx" }, basse: "R..5..",
+           couches: [{ son: "concert", motif: "aaaaaa", force: 0.45 }] },
+      B: { batterie: { kick: "x.....", snare: "...x..", hat: "xxxxxx" }, basse: "R..5..",
+           couches: [{ son: "concert", motif: "aaaaaa", force: 0.5 }, { son: "nappe", motif: "X.....", force: 0.4 }] } }
+  };
+
+  const arr = { actif: false, section: "A", depart: "A", suivante: null, apresBreak: "A", mesureIntro: 0, finJouee: false,
+    remplir: false, pas: 0, prochain: 0, minuterie: null, accord: null, arp: 0, couches: {}, coups: 0 };
+  const gauche = new Set();       // notes tenues à la main gauche
+  let accGain = null;
+  function sortieAccomp() {
+    if (!accGain) { accGain = ctx.createGain(); accGain.gain.value = reglages.volAccomp / 100; accGain.connect(maitre); }
+    return accGain;
+  }
+  const arrStyle = () => ARR[reglages.arrStyle] || ARR.louange;
+
+  // ---------- Reconnaître l'accord de la main gauche ----------
+  function lireAccord(notes) {
+    if (!notes.length) return null;
+    const tri = [...notes].sort((a, b) => a - b);
+    if (reglages.doigte === "un") {
+      // Doigté « un doigt » des claviers arrangeurs :
+      // la note la plus haute donne l'accord ; une noire à sa gauche = mineur ; une blanche = 7e ; les deux = m7
+      const haut = tri[tri.length - 1], autres = tri.filter(n => n < haut);
+      const noire = autres.some(n => NOIRE[n % 12]), blanche = autres.some(n => !NOIRE[n % 12]);
+      return { pc: haut % 12, q: noire && blanche ? "m7" : noire ? "min" : blanche ? "7" : "maj" };
+    }
+    const a = analyser(tri);
+    if (a) return a;
+    if (tri.length === 1) return { pc: tri[0] % 12, q: "maj" };
+    const iv = (tri[1] - tri[0]) % 12;
+    return { pc: tri[0] % 12, q: iv === 3 ? "min" : "maj" };
+  }
+  function gaucheAppui(m) {
+    gauche.add(m);
+    const a = lireAccord([...gauche]); if (!a) return;
+    const change = !arr.accord || arr.accord.pc !== a.pc || arr.accord.q !== a.q;
+    arr.accord = a;
+    afficherAccordArr();
+    if (!arr.actif && reglages.arrSync) demarrerArr();
+    else if (arr.actif && change) relancerAccord();
+  }
+  function gaucheLacher(m) { gauche.delete(m); }   // l'accord reste en mémoire, comme sur un arrangeur
+  function afficherAccordArr() {
+    const a = arr.accord, txt = a ? nomAccord(a.pc, a.q) : "—";
+    const el = document.getElementById("a-accord"); if (el) el.textContent = txt;
+    document.getElementById("accord").textContent = a ? txt : "";
+  }
+
+  // ---------- Instruments de l'orchestre (programmés à l'heure exacte) ----------
+  function noteOrchestre(t, m, force, duree, son) {
+    const g = ctx.createGain(), srcs = [], f0 = frequence(m);
+    g.connect(sortieAccomp());
+    g.gain.setValueAtTime(0, t);
+    if (son === "concert" && tampons.size) {
+      const s = echantillonProche(m), src = ctx.createBufferSource(), lp = ctx.createBiquadFilter();
+      src.buffer = tampons.get(s); src.playbackRate.value = Math.pow(2, (m - s) / 12);
+      lp.type = "lowpass"; lp.frequency.value = 900 + 15000 * force * force;
+      src.connect(lp); lp.connect(g);
+      g.gain.setValueAtTime(0.12 + 0.95 * Math.pow(force, 1.6), t);
+      g.gain.setTargetAtTime(0, t + duree, 0.12);
+      src.start(t); stop(src, t + duree + 1); srcs.push(src);
+    } else if (son === "basse") {
+      const o = ctx.createOscillator(), sub = ctx.createOscillator(), lp = ctx.createBiquadFilter();
+      o.type = "triangle"; o.frequency.value = f0; sub.type = "sine"; sub.frequency.value = f0;
+      lp.type = "lowpass"; lp.frequency.value = 650; lp.Q.value = 0.8;
+      o.connect(lp); sub.connect(lp); lp.connect(g);
+      const pic = 0.75 * force;
+      g.gain.linearRampToValueAtTime(pic, t + 0.006);
+      g.gain.setTargetAtTime(pic * 0.55, t + 0.01, 0.18);
+      g.gain.setTargetAtTime(0, t + duree, 0.04);
+      [o, sub].forEach(x => { x.start(t); stop(x, t + duree + 0.4); srcs.push(x); });
+    } else if (son === "guitare") {
+      const o = ctx.createOscillator(), lp = ctx.createBiquadFilter();
+      o.type = "sawtooth"; o.frequency.value = f0;
+      lp.type = "lowpass"; lp.frequency.setValueAtTime(2600 + 2400 * force, t); lp.frequency.exponentialRampToValueAtTime(500, t + 0.22);
+      o.connect(lp); lp.connect(g);
+      g.gain.linearRampToValueAtTime(0.2 * force, t + 0.004);
+      g.gain.setTargetAtTime(0, t + 0.01, Math.min(0.28, Math.max(0.08, duree / 2)));
+      o.start(t); stop(o, t + duree + 0.6); srcs.push(o);
+    } else if (son === "orgue") {
+      [[1, 0.5], [2, 0.3], [4, 0.15]].forEach(([r, a]) => { const o = ctx.createOscillator(), og = ctx.createGain(); o.type = "sine"; o.frequency.value = f0 * r; og.gain.value = a; o.connect(og); og.connect(g); o.start(t); stop(o, t + duree + 0.3); srcs.push(o); });
+      g.gain.linearRampToValueAtTime(0.28 * force, t + 0.03);
+      g.gain.setTargetAtTime(0, t + duree, 0.05);
+    } else {
+      // nappe (et piano si les enregistrements ne sont pas encore chargés)
+      const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = son === "nappe" ? 1600 : 4000; lp.connect(g);
+      (son === "nappe" ? [-8, 0, 8] : [0]).forEach(c => { const o = ctx.createOscillator(); o.type = son === "nappe" ? "sawtooth" : "triangle"; o.frequency.value = f0 * Math.pow(2, c / 1200); o.connect(lp); o.start(t); stop(o, t + duree + 1.2); srcs.push(o); });
+      if (son === "nappe") { g.gain.linearRampToValueAtTime(0.13 * force, t + 0.35); g.gain.setTargetAtTime(0, t + duree, 0.35); }
+      else { g.gain.linearRampToValueAtTime(0.35 * force, t + 0.005); g.gain.setTargetAtTime(0, t + 0.01, 0.6); }
+    }
+    arr.coups++;
+    return { g, srcs };
+  }
+  function couperCouche(cle, t) {
+    (arr.couches[cle] || []).forEach(n => {
+      try { n.g.gain.cancelScheduledValues(t); n.g.gain.setTargetAtTime(0, t, 0.03); } catch (e) {}
+      n.srcs.forEach(s => stop(s, t + 0.25));
+    });
+    arr.couches[cle] = [];
+  }
+  function accordCourant() { return arr.accord || { pc: reglages.tonalite, q: reglages.majeur ? "maj" : "min" }; }
+  function notesBasse(c) {
+    const a = accordCourant(), racine = 36 + a.pc, iv = QUALITES[a.q].iv;
+    return { R: racine, "5": racine + (iv[2] || 7), "8": racine + 12, "3": racine + iv[1] }[c];
+  }
+  // Nombre de pas jusqu'au prochain coup du motif (pour savoir combien de temps tenir la note)
+  function jusquAuProchain(motif, p, n) {
+    for (let k = 1; k <= n; k++) if (motif[(p + k) % motif.length] !== ".") return k;
+    return n;
+  }
+
+  // ---------- Remplissage de batterie (fill) ----------
+  function fill(st, p, n) {
+    const moitie = Math.floor(n / 2), rel = p - moitie;
+    const r = {};
+    if (p < moitie) return null;
+    r.snare = true;
+    if (st.parTemps === 4 ? rel % 4 === 1 : rel % 3 === 1) r.tomH = true;
+    if (st.parTemps === 4 ? rel % 4 === 3 : rel % 3 === 2) r.tomB = true;
+    if (p === moitie) r.kick = true;
+    return r;
+  }
+
+  // ---------- Un pas de l'orchestre ----------
+  function pasArrangeur(p, t) {
+    const st = arrStyle(), n = st.temps * st.parTemps, dPas = 60 / reglages.bpm / st.parTemps;
+    if (p === 0) {
+      if (arr.section === "fin" && arr.finJouee) { finale(t); return false; }
+      if (arr.section === "intro") { arr.mesureIntro++; if (arr.mesureIntro > 2) arr.section = "A"; }
+      if (arr.section === "break") arr.section = arr.apresBreak;
+      if (arr.suivante) {
+        if (arr.suivante === "break") { arr.apresBreak = arr.section === "B" ? "B" : "A"; }
+        arr.section = arr.suivante; arr.suivante = null; arr.remplir = false; arr.finJouee = false;
+      }
+      if (arr.section === "fin") arr.finJouee = true;
+      setTimeout(majSectionsArr, Math.max(0, (t - ctx.currentTime) * 1000));
+    }
+    const v = arr.section === "B" || (arr.section === "break" && arr.apresBreak === "B") ? st.B : st.A;
+    const intro1 = arr.section === "intro" && arr.mesureIntro === 1;
+    const avecFill = arr.section === "break" || (arr.remplir && p >= n / 2) || (arr.section === "intro" && arr.mesureIntro === 2 && p >= n / 2);
+
+    // Batterie
+    const f = avecFill ? (arr.section === "break" && p < n / 2 ? {} : fill(st, p, n)) : null;
+    if (f) {
+      if (f.kick) frappe("kick", t, true);
+      if (f.snare) frappe("snare", t, false);
+      if (f.tomH) frappe("tomH", t, false);
+      if (f.tomB) frappe("tomB", t, false);
+      if (arr.section === "break" && p < n / 2 && p % st.parTemps === 0) frappe("hat", t, false);
+    } else {
+      Object.entries(v.batterie).forEach(([piste, motif]) => {
+        if (intro1 && (piste === "kick" || piste === "snare" || piste === "clap")) return;
+        const c = motif[p % motif.length];
+        if (c === "x" || c === "X") frappe(piste, t, p === 0 && piste === "kick");
+      });
+    }
+    if (arr.section === "break") return true;
+
+    // Basse
+    if (!intro1) {
+      const c = v.basse[p % v.basse.length];
+      if (c !== ".") {
+        couperCouche("basse", t);
+        const duree = jusquAuProchain(v.basse, p, n) * dPas * 0.92;
+        arr.couches.basse = [noteOrchestre(t, notesBasse(c), 0.85, duree, "basse")];
+      }
+    }
+    // Accords (piano, guitare, nappe, orgue)
+    const a = accordCourant(), { notes } = voicing(a.pc, a.q);
+    v.couches.forEach((couche, i) => {
+      const c = couche.motif[p % couche.motif.length]; if (c === ".") return;
+      const cle = "c" + i;
+      const duree = (c === "x" ? Math.min(1.5, jusquAuProchain(couche.motif, p, n)) : jusquAuProchain(couche.motif, p, n)) * dPas * 0.95;
+      couperCouche(cle, t);
+      if (c === "a") {
+        const arp = [...notes, notes[0] + 12, ...notes.slice(1).reverse()];
+        const m = arp[arr.arp++ % arp.length];
+        arr.couches[cle] = [noteOrchestre(t, m, couche.force, Math.max(duree, dPas * 2), couche.son)];
+      } else {
+        arr.couches[cle] = notes.map(m => noteOrchestre(t, m, couche.force * (c === "x" ? 0.85 : 1), duree, couche.son));
+      }
+    });
+    return true;
+  }
+  // Un changement d'accord relance tout de suite la basse et les accords tenus
+  function relancerAccord() {
+    if (!arr.actif || arr.section === "break") return;
+    const st = arrStyle(), t = ctx.currentTime + 0.01, dPas = 60 / reglages.bpm / st.parTemps;
+    const v = arr.section === "B" ? st.B : st.A, a = accordCourant(), { notes } = voicing(a.pc, a.q);
+    const n = st.temps * st.parTemps, p = (arr.pas + n - 1) % n;
+    couperCouche("basse", t);
+    arr.couches.basse = [noteOrchestre(t, notesBasse("R"), 0.8, jusquAuProchain(v.basse, p, n) * dPas, "basse")];
+    v.couches.forEach((couche, i) => {
+      if (!couche.motif.includes("X")) return;          // les motifs rythmés reprennent au prochain coup
+      couperCouche("c" + i, t);
+      arr.couches["c" + i] = notes.map(m => noteOrchestre(t, m, couche.force, jusquAuProchain(couche.motif, p, n) * dPas, couche.son));
+    });
+  }
+  function finale(t) {
+    const a = accordCourant(), { notes, basse } = voicing(a.pc, a.q);
+    Object.keys(arr.couches).forEach(k => couperCouche(k, t));
+    frappe("kick", t, true); frappe("crash", t, true);
+    noteOrchestre(t, basse, 0.8, 2.5, "basse");
+    const son = arrStyle().A.couches[0].son;
+    [...notes, notes[0] + 12].forEach(m => noteOrchestre(t, m, 0.6, 2.6, son === "guitare" ? "concert" : son));
+    setTimeout(() => arreterArr(true), Math.max(0, (t - ctx.currentTime) * 1000) + 50);
+  }
+  function planifierArr() {
+    const st = arrStyle(), n = st.temps * st.parTemps, dPas = 60 / reglages.bpm / st.parTemps;
+    while (arr.actif && arr.prochain < ctx.currentTime + 0.12) {
+      const p = arr.pas, t = arr.prochain;
+      if (p % st.parTemps === 0) { const temps = p / st.parTemps; setTimeout(() => allumerBattement(temps), Math.max(0, (t - ctx.currentTime) * 1000)); }
+      if (!pasArrangeur(p, t)) break;
+      const panneau = document.querySelector(".arr"); if (panneau) panneau.dataset.coups = arr.coups;
+      arr.pas = (p + 1) % n; arr.prochain += dPas;
+    }
+  }
+  function demarrerArr() {
+    if (!audio()) return;
+    if (rythme.actif) arreterRythme();
+    if (lecteur.actif) arreterLecteur();
+    Object.assign(arr, { actif: true, pas: 0, prochain: ctx.currentTime + 0.06, section: arr.depart === "intro" ? "intro" : arr.depart, mesureIntro: 0, suivante: null, remplir: false, finJouee: false, arp: 0 });
+    rythme.actif = true;              // pour allumer les battements
+    planifierArr(); arr.minuterie = setInterval(planifierArr, 25);
+    majSectionsArr();
+  }
+  function arreterArr(laisserSonner) {
+    if (!arr.actif && !arr.minuterie) return;
+    arr.actif = false; clearInterval(arr.minuterie); arr.minuterie = null;
+    if (!laisserSonner) Object.keys(arr.couches).forEach(k => couperCouche(k, ctx.currentTime));
+    rythme.actif = false; allumerBattement(-1);
+    if (arr.depart === "fin") arr.depart = "A";
+    majSectionsArr();
+  }
+  function demanderSection(sec) {
+    if (!arr.actif) {
+      if (sec === "fin" || sec === "break") return;
+      arr.depart = sec; majSectionsArr(); return;
+    }
+    if (sec === "intro") return;
+    arr.suivante = sec;
+    arr.remplir = sec !== "break";      // petit roulement de batterie avant de changer
+    majSectionsArr();
+  }
+  function majSectionsArr() {
+    const p = document.getElementById("a-start");
+    if (p) { p.textContent = arr.actif ? "■ Arrêter" : "▶ Démarrer"; p.setAttribute("aria-pressed", arr.actif ? "true" : "false"); }
+    document.querySelectorAll("[data-sec]").forEach(b => {
+      const s = b.dataset.sec;
+      const courant = arr.actif ? arr.section === s : arr.depart === s;
+      b.setAttribute("aria-pressed", courant ? "true" : "false");
+      b.classList.toggle("attente", arr.actif && arr.suivante === s);
+    });
+    majRythmeUI();
+  }
+
+  // ---------- Panneau ----------
+  function construireArrangeur() {
+    const p = document.createElement("section");
+    p.className = "arr"; p.setAttribute("aria-label", "Arrangeur");
+    p.innerHTML = `
+      <div class="a-ligne">
+        <button type="button" class="bt plein" id="a-start" aria-pressed="false">▶ Démarrer</button>
+        <button type="button" class="bt" id="a-sync" aria-pressed="${reglages.arrSync}">Sync</button>
+        <span class="seg a-sections" role="group" aria-label="Partie du morceau">
+          <button type="button" id="a-intro" data-sec="intro">Intro</button><button type="button" id="a-a" data-sec="A">A</button><button type="button" id="a-b" data-sec="B">B</button><button type="button" id="a-break" data-sec="break">Break</button><button type="button" id="a-fin" data-sec="fin">Fin</button>
+        </span>
+        <select class="bt" id="a-style" aria-label="Style d'accompagnement">${Object.entries(ARR).map(([id, s]) => `<option value="${id}"${id === reglages.arrStyle ? " selected" : ""}>${s.nom}</option>`).join("")}</select>
+        <span class="a-accord" id="a-accord" aria-live="polite">—</span>
+      </div>
+      <div class="a-ligne">
+        <span class="seg" role="group" aria-label="Doigté des accords"><button type="button" id="a-complet" data-doigte="complet">Accord complet</button><button type="button" id="a-un" data-doigte="un">Un doigt</button></span>
+        <select class="bt" id="a-son" aria-label="Son de la main droite">${SONS.map(s => `<option value="${s.id}"${s.id === reglages.son ? " selected" : ""}>Main droite : ${s.nom}</option>`).join("")}</select>
+        <button type="button" class="bt" id="a-couche" aria-pressed="${reglages.couche}">+ Nappe</button>
+        <span class="pas">Séparation <button type="button" class="bt carre" id="a-split-moins" aria-label="Déplacer la séparation vers le grave">−</button><output id="a-split">${nomDe(reglages.split, true)}</output><button type="button" class="bt carre" id="a-split-plus" aria-label="Déplacer la séparation vers l'aigu">+</button></span>
+        <label class="a-vol" for="a-vol">Orchestre <input type="range" id="a-vol" min="0" max="100" value="${reglages.volAccomp}"></label>
+      </div>`;
+    scene.appendChild(p);
+    const q = s => p.querySelector(s);
+    q("#a-start").addEventListener("click", () => arr.actif ? (arr.section === "fin" ? arreterArr(false) : demanderSection("fin")) : demarrerArr());
+    q("#a-start").addEventListener("dblclick", () => arreterArr(false));
+    q("#a-sync").addEventListener("click", e => { reglages.arrSync = !reglages.arrSync; sauver(); e.currentTarget.setAttribute("aria-pressed", reglages.arrSync ? "true" : "false"); });
+    p.querySelectorAll("[data-sec]").forEach(b => b.addEventListener("click", () => demanderSection(b.dataset.sec)));
+    q("#a-style").addEventListener("change", e => { reglages.arrStyle = e.target.value; reglages.bpm = arrStyle().bpm; sauver(); if (arr.actif) { arr.pas = 0; } majRythmeUI(); });
+    p.querySelectorAll("[data-doigte]").forEach(b => { b.setAttribute("aria-pressed", b.dataset.doigte === reglages.doigte ? "true" : "false"); b.addEventListener("click", () => { reglages.doigte = b.dataset.doigte; sauver(); p.querySelectorAll("[data-doigte]").forEach(x => x.setAttribute("aria-pressed", x === b ? "true" : "false")); }); });
+    q("#a-son").addEventListener("change", e => { reglages.son = e.target.value; sauver(); majSons(); });
+    q("#a-couche").addEventListener("click", e => { reglages.couche = !reglages.couche; sauver(); e.currentTarget.setAttribute("aria-pressed", reglages.couche ? "true" : "false"); });
+    const split = d => { reglages.split = Math.max(36, Math.min(84, reglages.split + d)); sauver(); q("#a-split").textContent = nomDe(reglages.split, true); dessinerZones(); };
+    q("#a-split-moins").addEventListener("click", () => split(-1));
+    q("#a-split-plus").addEventListener("click", () => split(1));
+    q("#a-vol").addEventListener("input", e => { reglages.volAccomp = +e.target.value; sauver(); if (accGain) accGain.gain.setTargetAtTime(reglages.volAccomp / 100, ctx.currentTime, 0.02); });
+    afficherAccordArr(); majSectionsArr();
+  }
+
+  // =========================================================
   // Clavier MIDI (vraies touches)
   // =========================================================
   let acces = null;
@@ -1495,6 +1884,12 @@ input[type=range]{accent-color:var(--laiton);width:150px}
   }
   function messageMidi(e) {
     const [statut, d1, d2] = e.data, type = statut & 0xf0;
+    if (reglages.mode === "arrangeur" && d1 < reglages.split && (type === 0x90 || type === 0x80)) {
+      const enfoncee = type === 0x90 && d2 > 0;
+      zones.forEach(z => marquer(z, d1, enfoncee));
+      if (enfoncee) gaucheAppui(d1); else gaucheLacher(d1);
+      return;
+    }
     if (type === 0x90 && d2 > 0) {                       // touche enfoncée
       const cle = "midi:" + d1;
       zones.forEach(z => marquer(z, d1, true));
@@ -1542,7 +1937,7 @@ input[type=range]{accent-color:var(--laiton);width:150px}
       });
     });
   }
-  groupe("[data-mode]", "mode", b => b.dataset.mode, () => { finAccordPad(); arreterLecteur(); if (reglages.mode === "composer") appliquerChant(); construireScene(); });
+  groupe("[data-mode]", "mode", b => b.dataset.mode, () => { finAccordPad(); arreterLecteur(); arreterArr(false); if (reglages.mode === "composer") appliquerChant(); construireScene(); });
   groupe("[data-taille]", "taille", b => +b.dataset.taille, dessinerZones);
   groupe("[data-nom]", "nom", b => b.dataset.nom, () => { dessinerZones(); if (reglages.mode === "accords") construireScene(); remplirTonalites(); dessinerBandeau(); });
   groupe("[data-clavier]", "clavier", b => b.dataset.clavier, dessinerZones);
@@ -1560,7 +1955,7 @@ input[type=range]{accent-color:var(--laiton);width:150px}
   // Rythmes
   document.getElementById("styles").innerHTML = Object.entries(STYLES).map(([id, s]) => `<button type="button" class="bt" id="style-${id}" data-style="${id}">${s.nom}</button>`).join("");
   document.querySelectorAll("#styles button").forEach(b => b.addEventListener("click", () => { reglages.style = b.dataset.style; sauver(); if (rythme.actif) { rythme.pas = 0; } majRythmeUI(); syncChant(); }));
-  document.getElementById("rythme-lancer").addEventListener("click", () => rythme.actif ? (lecteur.actif ? arreterLecteur() : arreterRythme()) : lancerRythme());
+  document.getElementById("rythme-lancer").addEventListener("click", () => arr.actif ? arreterArr(false) : rythme.actif ? (lecteur.actif ? arreterLecteur() : arreterRythme()) : lancerRythme());
   function repetition(bouton, sens) {
     let attenteRep, minuterieRep, n = 0;
     const pas = () => { n++; changerBpm(sens * (n < 10 ? 1 : n < 25 ? 5 : 10)); };
