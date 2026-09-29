@@ -1,0 +1,30 @@
+{
+  "name": "Piano Ivoire",
+  "short_name": "Piano Ivoire",
+  "description": "Piano numérique : deux mains, 88 touches, rythmes, accords et tonalités.",
+  "lang": "fr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#0E0D0C",
+  "theme_color": "#0E0D0C",
+  "icons": [
+    {
+      "src": "icones/icone-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icones/icone-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "icones/icone-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
