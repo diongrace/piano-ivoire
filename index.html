@@ -272,6 +272,7 @@ input[type=range]{accent-color:var(--laiton);width:150px}
 
   <section aria-labelledby="m-conseils">
     <h3 id="m-conseils">Conseils</h3>
+    <p>Le son « Piano à queue » est un vrai piano Yamaha C5 enregistré : <em>Salamander Grand Piano</em> d'Alexander Holm, sous licence <a href="https://creativecommons.org/licenses/by/3.0/deed.fr" target="_blank" rel="noopener" style="color:var(--laiton)">CC BY 3.0</a>.</p>
     <p>Sur iPhone, désactive le mode silencieux (bouton sur le côté), sinon le piano ne fait aucun son. Pour moins de décalage entre le doigt et le son, branche un casque filaire plutôt que Bluetooth.</p>
   </section>
 </aside>
@@ -320,13 +321,14 @@ input[type=range]{accent-color:var(--laiton);width:150px}
   // =========================================================
   const CLE = "piano-ivoire:v2";
   const reglages = {
-    mode: "piano", son: "piano", volume: 80, reverb: 35, nom: "fr", clavier: "azerty", taille: 14,
+    mode: "piano", son: "concert", volume: 85, reverb: 22, nom: "fr", clavier: "azerty", taille: 14,
     tonalite: 0, majeur: true, gamme: false, transpo: 0,
     style: "louange", bpm: 90, volRythme: 70,
     debuts: { piano: 48, haut: 60, bas: 36, accords: 55 }
   };
   try {
     const lu = JSON.parse(localStorage.getItem(CLE) || "{}");
+    if (!lu.sonConcert) { delete lu.son; delete lu.reverb; lu.sonConcert = true; }   // passage au vrai piano pour tout le monde
     Object.assign(reglages, lu, { debuts: Object.assign({}, reglages.debuts, lu.debuts || {}) });
   } catch (e) {}
   let attenteSauvegarde;
@@ -337,6 +339,13 @@ input[type=range]{accent-color:var(--laiton);width:150px}
   // =========================================================
   let ctx = null, maitre, batterie, envoiReverb, reverbGain;
   function audio() {
+    contexte();
+    if (ctx && ctx.state === "suspended") ctx.resume();
+    if (ctx && !veilleDemandee) { veilleDemandee = true; demanderVeille(); }
+    return ctx;
+  }
+  let veilleDemandee = false;
+  function contexte() {
     if (!ctx) {
       const AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return null;
@@ -352,10 +361,39 @@ input[type=range]{accent-color:var(--laiton);width:150px}
       maitre.connect(envoiReverb); envoiReverb.connect(salle); salle.connect(reverbGain); reverbGain.connect(compresseur);
       batterie.connect(compresseur);
       compresseur.connect(ctx.destination);
-      demanderVeille();
     }
-    if (ctx.state === "suspended") ctx.resume();
     return ctx;
+  }
+
+  // =========================================================
+  // Piano à queue enregistré : Salamander Grand Piano (Yamaha C5), une note toutes les tierces mineures
+  // =========================================================
+  const ECHANTILLONS = ["A0", "C1", "Ds1", "Fs1", "A1", "C2", "Ds2", "Fs2", "A2", "C3", "Ds3", "Fs3", "A3", "C4", "Ds4", "Fs4", "A4", "C5", "Ds5", "Fs5", "A5", "C6", "Ds6", "Fs6", "A6", "C7", "Ds7", "Fs7", "A7", "C8"];
+  const tampons = new Map();    // midi de l'enregistrement → AudioBuffer
+  let chargement = null, charges = 0;
+  const midiEchantillon = n => { const r = n.match(/^([A-G])(s?)([0-9])$/); return 12 * (+r[3] + 1) + NOTE[r[1]] + (r[2] ? 1 : 0); };
+  const decoder = b => new Promise((ok, ko) => ctx.decodeAudioData(b, ok, ko));
+  function chargerPiano() {
+    if (chargement || !contexte()) return chargement;
+    majChargement();
+    chargement = Promise.all(ECHANTILLONS.map(n =>
+      fetch("sons/piano/" + n + ".mp3")
+        .then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+        .then(decoder)
+        .then(buf => { tampons.set(midiEchantillon(n), buf); charges++; majChargement(); })
+        .catch(() => { charges++; majChargement(); })
+    ));
+    return chargement;
+  }
+  function majChargement() {
+    const el = document.getElementById("accord");
+    if (charges < ECHANTILLONS.length) el.textContent = "Piano… " + Math.round(charges / ECHANTILLONS.length * 100) + " %";
+    else if (el.textContent.startsWith("Piano…")) el.textContent = tampons.size ? "" : "Son de secours";
+  }
+  function echantillonProche(m) {
+    let meilleur = null, ecart = 99;
+    tampons.forEach((b, s) => { const d = Math.abs(m - s); if (d < ecart) { ecart = d; meilleur = s; } });
+    return meilleur;
   }
   function reponseSalle(duree) {
     const n = Math.floor(ctx.sampleRate * duree), buf = ctx.createBuffer(2, n, ctx.sampleRate);
@@ -377,7 +415,8 @@ input[type=range]{accent-color:var(--laiton);width:150px}
   const osc = (type, f, t) => { const o = ctx.createOscillator(); o.type = type; o.frequency.value = f; o.start(t); return o; };
 
   const SONS = [
-    { id: "piano", nom: "Piano" },
+    { id: "concert", nom: "Piano à queue" },
+    { id: "piano", nom: "Piano léger" },
     { id: "electrique", nom: "Piano électrique" },
     { id: "eglise", nom: "Orgue d'église" },
     { id: "nappe", nom: "Nappe de louange" },
@@ -392,7 +431,20 @@ input[type=range]{accent-color:var(--laiton);width:150px}
     const sources = [];
     const brancher = (noeud, gain, cible) => { const g = ctx.createGain(); g.gain.value = gain; noeud.connect(g); g.connect(cible || sortie); return g; };
 
-    if (son === "piano") {
+    if (son === "concert" && tampons.size) {
+      const s = echantillonProche(m), src = ctx.createBufferSource();
+      src.buffer = tampons.get(s);
+      src.playbackRate.value = Math.pow(2, (m - s) / 12);
+      // Jouer doucement donne un son plus sombre, comme sur un vrai piano
+      const filtre = ctx.createBiquadFilter(); filtre.type = "lowpass";
+      filtre.frequency.value = 900 + 15000 * force * force; filtre.Q.value = 0.3;
+      src.connect(filtre); filtre.connect(sortie);
+      sortie.gain.value = 0.12 + 0.95 * Math.pow(force, 1.6);
+      src.start(t); sources.push(src);
+      stop(src, t + src.buffer.duration / src.playbackRate.value + 0.1);
+      return { sortie, sources, son };
+    }
+    if (son === "piano" || son === "concert") {
       const filtre = ctx.createBiquadFilter(); filtre.type = "lowpass";
       filtre.frequency.setValueAtTime(Math.min(15000, f * 7 + 3500 * force), t);
       filtre.frequency.exponentialRampToValueAtTime(Math.max(f * 2.2, 700), t + 1.6);
@@ -457,7 +509,7 @@ input[type=range]{accent-color:var(--laiton);width:150px}
   }
   function relacher(v) {
     const t = ctx.currentTime;
-    const duree = v.son === "nappe" ? 0.6 : v.son === "cordes" ? 0.3 : v.son === "eglise" ? 0.06 : 0.08;
+    const duree = v.son === "nappe" ? 0.6 : v.son === "cordes" ? 0.3 : v.son === "eglise" ? 0.06 : v.son === "concert" ? 0.11 : 0.08;
     v.sortie.gain.cancelScheduledValues(t);
     v.sortie.gain.setValueAtTime(v.sortie.gain.value, t);
     v.sortie.gain.setTargetAtTime(0, t, duree);
@@ -1090,6 +1142,7 @@ input[type=range]{accent-color:var(--laiton);width:150px}
   // Démarrage
   majSons(); remplirTonalites(); majGamme(); majTranspo(); majRythmeUI(); majBoutonsMelodie(); resumeEnreg();
   construireScene(); dessinerBandeau();
+  chargerPiano();
 
   // Application hors ligne (seulement quand la page est installée depuis GitHub Pages)
   if ("serviceWorker" in navigator && location.protocol === "https:" && !/claude/.test(location.hostname)) {
