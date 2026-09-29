@@ -343,7 +343,7 @@ input[type=range]{accent-color:var(--laiton);width:150px}
 
   <section aria-labelledby="m-conseils">
     <h3 id="m-conseils">Conseils</h3>
-    <p>Le son « Piano à queue » est un vrai piano Yamaha C5 enregistré : <em>Salamander Grand Piano</em> d'Alexander Holm, sous licence <a href="https://creativecommons.org/licenses/by/3.0/deed.fr" target="_blank" rel="noopener" style="color:var(--laiton)">CC BY 3.0</a>.</p>
+    <p>Le son « Piano à queue » est un vrai piano Yamaha C5 enregistré : <em>Salamander Grand Piano</em> d'Alexander Holm, sous licence <a href="https://creativecommons.org/licenses/by/3.0/deed.fr" target="_blank" rel="noopener" style="color:var(--laiton)">CC BY 3.0</a>. La batterie et les percussions sont de vrais instruments enregistrés : <em>Versilian Community Sample Library</em>, domaine public (CC0).</p>
     <p>Sur iPhone, désactive le mode silencieux (bouton sur le côté), sinon le piano ne fait aucun son. Pour moins de décalage entre le doigt et le son, branche un casque filaire plutôt que Bluetooth.</p>
   </section>
 </aside>
@@ -927,7 +927,48 @@ input[type=range]{accent-color:var(--laiton);width:150px}
     sixhuit: { nom: "Lent 6/8", temps: 2, parTemps: 3, pistes: { kick: "x.....", snare: "...x..", hat: "xxxxxx" } },
     aucun: { nom: "Sans rythme", temps: 4, parTemps: 1, pistes: {} }
   };
+  // =========================================================
+  // Vraie batterie enregistrée (VCSL, domaine public CC0)
+  // =========================================================
+  const BATTERIE = {
+    kick: ["kick"], snare: ["snare1", "snare2"], rim: ["rim"], hat: ["hat1", "hat2"], hatOuvert: ["hatOuvert"],
+    tomH: ["tomH"], tomB: ["tomB"], crash: ["crash"], congaB: ["congaB"], congaH: ["congaH"],
+    shaker: ["shaker1", "shaker2"], cloche: ["cloche"], clap: ["clap1", "clap2"], clave: ["clave"], tamb: ["tamb"]
+  };
+  // Tous les fichiers sont normalisés au même niveau : on dose ici chaque instrument dans le mélange
+  const NIVEAUX = { kick: 0.95, snare: 0.62, rim: 0.42, hat: 0.26, hatOuvert: 0.22, tomH: 0.55, tomB: 0.6, crash: 0.38,
+    congaB: 0.55, congaH: 0.48, shaker: 0.2, cloche: 0.3, clap: 0.42, clave: 0.38, tamb: 0.3 };
+  const tamponsBatterie = new Map();
+  const alternance = {};
+  let chargementBatterie = null;
+  function chargerBatterie() {
+    if (chargementBatterie || !contexte()) return chargementBatterie;
+    const noms = [...new Set(Object.values(BATTERIE).flat())];
+    chargementBatterie = Promise.all(noms.map(n =>
+      fetch("sons/batterie/" + n + ".mp3")
+        .then(rep => { if (!rep.ok) throw new Error(rep.status); return rep.arrayBuffer(); })
+        .then(decoder)
+        .then(buf => tamponsBatterie.set(n, buf))
+        .catch(() => {})
+    ));
+    return chargementBatterie;
+  }
   function frappe(type, t, fort) {
+    const noms = BATTERIE[type];
+    if (noms && tamponsBatterie.size) {
+      const i = alternance[type] = ((alternance[type] || 0) + 1) % noms.length;   // deux prises en alternance, plus naturel
+      const buf = tamponsBatterie.get(noms[i]);
+      if (buf) {
+        const src = ctx.createBufferSource(), g = ctx.createGain();
+        src.buffer = buf;
+        g.gain.value = (NIVEAUX[type] || 0.5) * (fort ? 1 : 0.82) * (0.92 + Math.random() * 0.16);
+        src.connect(g); g.connect(batterie); src.start(t);
+        return;
+      }
+    }
+    frappeSynth(type, t, fort);
+  }
+  function frappeSynth(type, t, fort) {
     const g = ctx.createGain(); g.connect(batterie);
     const v = fort ? 1 : 0.8;
     const bruitSrc = (duree) => { const b = ctx.createBufferSource(); b.buffer = bruit(); b.start(t); stop(b, t + duree); return b; };
@@ -1542,7 +1583,7 @@ input[type=range]{accent-color:var(--laiton);width:150px}
     louange: { nom: "Louange pop", bpm: 96, temps: 4, parTemps: 4,
       A: { batterie: { kick: "x.....x.x.......", snare: "....x.......x...", hat: "x.x.x.x.x.x.x.x." }, basse: "R.....R.R...5...",
            couches: [{ son: "concert", motif: "X.......X.......", force: 0.55 }] },
-      B: { batterie: { kick: "x.....x.x.....x.", snare: "....x.......x...", hat: "xxxxxxxxxxxxxxxx", clap: "....x.......x..." }, basse: "R..R..R.R..R5.8.",
+      B: { batterie: { kick: "x.....x.x.....x.", snare: "....x.......x...", hat: "xxxxxxxxxxxxxx..", hatOuvert: "..............x.", clap: "....x.......x..." }, basse: "R..R..R.R..R5.8.",
            couches: [{ son: "concert", motif: "X..x..X...x.X...", force: 0.6 }, { son: "nappe", motif: "X...............", force: 0.45 }] } },
     adoration: { nom: "Adoration (ballade)", bpm: 68, temps: 4, parTemps: 4,
       A: { batterie: { kick: "x.........x.....", rim: "....x.......x...", shaker: "..x...x...x...x." }, basse: "R.......5.......",
@@ -1552,7 +1593,7 @@ input[type=range]{accent-color:var(--laiton);width:150px}
     gospel: { nom: "Gospel 12/8", bpm: 64, temps: 4, parTemps: 3,
       A: { batterie: { kick: "x.....x..x..", snare: "...x.....x..", hat: "x.xx.xx.xx.x" }, basse: "R.....5..R..",
            couches: [{ son: "concert", motif: "X..x.xX..x.x", force: 0.55 }] },
-      B: { batterie: { kick: "x..x..x..x..", snare: "...x.....x..", hat: "xxxxxxxxxxxx", clap: "...x.....x.." }, basse: "R..R..5..8..",
+      B: { batterie: { kick: "x..x..x..x..", snare: "...x.....x..", hat: "xxxxxxxxxxxx", clap: "...x.....x..", tamb: "...x.....x.." }, basse: "R..R..5..8..",
            couches: [{ son: "concert", motif: "X.xx.xX.xx.x", force: 0.6 }, { son: "orgue", motif: "X...........", force: 0.35 }] } },
     afro: { nom: "Afro-louange 12/8", bpm: 108, temps: 4, parTemps: 3,
       A: { batterie: { kick: "x.....x.....", cloche: "x.x.xx.x.x.x", congaB: "..x.....x...", shaker: "xxxxxxxxxxxx" }, basse: "R..R..5..R..",
@@ -1565,9 +1606,9 @@ input[type=range]{accent-color:var(--laiton);width:150px}
       B: { batterie: { kick: "x...x...x...x...", snare: "....x..x....x...", hat: "x.x.x.x.x.x.x.x.", congaH: "x..x..x...x.x...", shaker: "xxxxxxxxxxxxxxxx" }, basse: "R.RR5.R.R.RR5.8.",
            couches: [{ son: "guitare", motif: "xxx.x.xxx.x.x.x.", force: 0.5 }, { son: "concert", motif: "X.......X.......", force: 0.4 }] } },
     rumba: { nom: "Rumba congolaise", bpm: 120, temps: 4, parTemps: 4,
-      A: { batterie: { kick: "x..x....x..x....", rim: "x..x..x...x.x...", shaker: "xxxxxxxxxxxxxxxx" }, basse: "R..5..R.R..5..8.",
+      A: { batterie: { kick: "x..x....x..x....", clave: "x..x..x...x.x...", shaker: "xxxxxxxxxxxxxxxx" }, basse: "R..5..R.R..5..8.",
            couches: [{ son: "guitare", motif: "a.aa.a.aa.aa.a.a", force: 0.45 }] },
-      B: { batterie: { kick: "x..x....x..x....", snare: "....x.......x...", rim: "x..x..x...x.x...", hat: "x.x.x.x.x.x.x.x." }, basse: "R.R5..R.R.R5..8.",
+      B: { batterie: { kick: "x..x....x..x....", snare: "....x.......x...", clave: "x..x..x...x.x...", hat: "x.x.x.x.x.x.x.x.", congaH: "..x...x...x...x." }, basse: "R.R5..R.R.R5..8.",
            couches: [{ son: "guitare", motif: "a.aa.a.aa.aa.a.a", force: 0.5 }, { son: "guitare", motif: "x...x...x...x...", force: 0.35 }] } },
     zouk: { nom: "Zouk", bpm: 90, temps: 4, parTemps: 4,
       A: { batterie: { kick: "x...x...x...x...", rim: "..x..x....x..x..", hat: "x.x.x.x.x.x.x.x." }, basse: "R..R..R.R..R..5.",
@@ -2041,6 +2082,7 @@ input[type=range]{accent-color:var(--laiton);width:150px}
   if (reglages.mode === "composer") appliquerChant();
   construireScene(); dessinerBandeau();
   chargerPiano();
+  chargerBatterie();
 
   // Application hors ligne (seulement quand la page est installée depuis GitHub Pages)
   if ("serviceWorker" in navigator && location.protocol === "https:" && !/claude/.test(location.hostname)) {
