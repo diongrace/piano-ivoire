@@ -1,0 +1,2040 @@
+<title>Piano Ivoire</title>
+<style>
+/*POLICES*/
+:root{
+  color-scheme:dark;
+  --salle:#121110; --laque:#0E0D0C; --laque-2:#1B1917; --laque-3:#24211E; --reflet:#34302B;
+  --laiton:#C8A46A; --laiton-2:#8E7244; --laiton-clair:#E6CC98;
+  --feutre:#6B1E24; --ivoire:#F3EEE2; --ivoire-ombre:#D8D0BF; --ebene:#171514;
+  --texte:#ECE5D7; --texte-2:#A69D8E; --ok:#8FBF8A; --erreur:#D46A5C; --rouge:#E0473C;
+  --affiche:"Italiana","Didot","Bodoni 72",Georgia,serif;
+  --ui:"Manrope","Segoe UI",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--salle);color:var(--texte);font-family:var(--ui);font-size:14px;line-height:1.4;overflow:hidden;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation}
+button,select,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--laiton);outline-offset:2px}
+.app{height:100%;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr);padding-inline:max(8px, env(safe-area-inset-left, 0px)) max(8px, env(safe-area-inset-right, 0px));padding-bottom:env(safe-area-inset-bottom,0px)}
+
+/* ---------- Barre du haut ---------- */
+.barre{display:flex;align-items:center;gap:8px;padding-block:6px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+.barre::-webkit-scrollbar{display:none}
+.logo{font-family:var(--affiche);color:var(--laiton);font-size:22px;letter-spacing:.08em;white-space:nowrap;padding-right:4px}
+.bt{border:1px solid var(--reflet);background:var(--laque-2);border-radius:10px;height:36px;padding:0 11px;cursor:pointer;font-weight:600;font-size:13px;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+.bt:disabled{opacity:.4;cursor:default}
+.bt[aria-pressed="true"]{background:var(--laiton);color:#1b1408;border-color:var(--laiton)}
+.bt.carre{width:36px;padding:0;justify-content:center;font-size:16px}
+.seg{display:inline-flex;border:1px solid var(--reflet);border-radius:10px;padding:2px;background:var(--laque-2);flex:none}
+.seg button{border:0;background:transparent;height:30px;padding:0 10px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;color:var(--texte-2);white-space:nowrap}
+.seg button[aria-pressed="true"]{background:var(--laiton);color:#1b1408}
+select.bt{appearance:none;-webkit-appearance:none;padding-right:26px;background-image:linear-gradient(45deg,transparent 50%,var(--laiton) 50%),linear-gradient(135deg,var(--laiton) 50%,transparent 50%);
+  background-position:calc(100% - 14px) 15px,calc(100% - 9px) 15px;background-size:5px 5px;background-repeat:no-repeat}
+.tempo{display:inline-flex;align-items:center;gap:4px;flex:none}
+.tempo output{min-width:58px;text-align:center;font-variant-numeric:tabular-nums;font-weight:700;font-size:13px}
+.battements{display:inline-flex;gap:3px;align-items:center}
+.battements i{width:7px;height:7px;border-radius:50%;background:var(--reflet)}
+.battements i.on{background:var(--laiton)}
+.battements i.on.un{background:var(--rouge)}
+.accord{margin-left:auto;min-width:70px;text-align:right;font-family:var(--affiche);font-size:22px;color:var(--laiton-clair);white-space:nowrap;padding-left:8px}
+.espace{flex:1}
+
+/* ---------- Bandeau (mélodie guidée, conseils) ---------- */
+.bandeau{display:flex;align-items:center;gap:8px;padding-bottom:6px;min-height:0;flex-wrap:wrap}
+.bandeau:empty{display:none}
+.bandeau .puce{padding:3px 8px;border-radius:7px;background:var(--laque-2);border:1px solid #2c2823;font-size:12.5px;font-weight:700;color:var(--texte-2)}
+.bandeau .puce.faite{color:var(--ok);border-color:#3b5139}
+.bandeau .puce.courante{color:#1b1408;background:var(--laiton);border-color:var(--laiton)}
+.bandeau .info{color:var(--texte-2);font-size:13px}
+.bandeau .info.bravo{color:var(--ok);font-weight:700}
+.portrait{display:none;background:#2a2217;border:1px solid var(--laiton-2);color:var(--laiton-clair);border-radius:10px;padding:6px 10px;font-size:13px}
+@media (orientation:portrait) and (max-width:700px){.portrait{display:block}}
+
+/* ---------- Scène : claviers et accords ---------- */
+.scene{display:flex;flex-direction:column;gap:8px;min-height:0;min-width:0;padding-bottom:8px}
+.zone{flex:1;min-height:0;display:flex;flex-direction:column;background:var(--laque);border-radius:10px;padding:5px 5px 0;box-shadow:inset 0 1px 0 #2a2622}
+.nav{display:flex;align-items:center;gap:6px;height:24px;flex:none;padding-bottom:4px}
+.nav .fl{width:30px;height:22px;border-radius:6px;border:1px solid var(--reflet);background:var(--laque-2);color:var(--laiton);cursor:pointer;font-size:12px;line-height:1}
+.nav .role{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--texte-2);font-weight:700;white-space:nowrap;min-width:76px}
+.carte88{position:relative;flex:1;height:18px;display:flex;border-radius:3px;overflow:hidden;cursor:pointer;touch-action:none;background:#000}
+.carte88 i{flex:1;background:#cfc8b8;border-right:1px solid #8d8574}
+.carte88 i.do{background:#e8dcc0}
+.carte88 .fenetre{position:absolute;top:0;bottom:0;border:2px solid var(--laiton);background:rgba(200,164,106,.28);border-radius:3px;pointer-events:none}
+.feutre{height:5px;background:linear-gradient(180deg,#86272f,var(--feutre));flex:none}
+.touches{position:relative;flex:1;min-height:90px;display:flex;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;background:#000;overflow:hidden;border-radius:0 0 6px 6px}
+.blanche{flex:1;position:relative;background:linear-gradient(180deg,#e9e3d5 0%,var(--ivoire) 10%,var(--ivoire) 90%,var(--ivoire-ombre) 100%);
+  border-right:1px solid #b9b09e;border-radius:0 0 5px 5px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;padding-bottom:6px;gap:3px}
+.blanche:last-child{border-right:0}
+.blanche.appuyee{background:linear-gradient(180deg,#d8d0bf 0%,#e4dccb 40%,#e9e2d3 100%);box-shadow:inset 0 5px 9px -5px #0007}
+.noire{position:absolute;top:0;height:60%;background:linear-gradient(180deg,#2a2725 0%,var(--ebene) 72%,#050505 100%);border-radius:0 0 4px 4px;z-index:2;
+  box-shadow:0 3px 4px #0008,inset 0 -6px 0 #000,inset 1px 0 0 #3b3734;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;padding-bottom:7px;gap:3px}
+.noire.appuyee{background:linear-gradient(180deg,#191716 0%,#0a0909 100%);box-shadow:0 1px 2px #0008,inset 0 -2px 0 #000}
+.nom{font-size:11px;font-weight:700;color:#6a6152;pointer-events:none}
+.nom.do{color:#8a6b39}
+.lettre{font-size:9.5px;font-weight:700;color:#9a917f;border:1px solid #cfc6b3;border-radius:3px;padding:0 3px;pointer-events:none}
+.noire .lettre{color:#8d857a;border-color:#3b3734}
+.point{width:7px;height:7px;border-radius:50%;background:#b8ab8e;pointer-events:none}
+.point.tonique{background:var(--laiton);box-shadow:0 0 0 2px #0002}
+.noire .point{background:#6e6452}
+.noire .point.tonique{background:var(--laiton)}
+.accordee.blanche{background:linear-gradient(180deg,#efe0c0 0%,#f5ebd6 100%)}
+.accordee.noire{background:linear-gradient(180deg,#6b5530 0%,#3f321c 100%)}
+.suivante{outline:3px solid var(--laiton);outline-offset:-3px}
+.blanche.suivante{background:linear-gradient(180deg,#f0dfb9 0%,#f6ead0 100%)}
+.noire.suivante{background:linear-gradient(180deg,#7a5f33 0%,#4a3a20 100%)}
+.fausse{animation:faux .35s}
+@keyframes faux{40%{filter:sepia(1) saturate(5) hue-rotate(-35deg)}}
+@media (prefers-reduced-motion:reduce){.fausse{animation:none}}
+
+.pad{flex:none;display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:6px;height:clamp(84px,30%,160px)}
+.pad button{border:1px solid var(--reflet);background:linear-gradient(180deg,var(--laque-3),var(--laque-2));border-radius:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;touch-action:none;user-select:none;-webkit-user-select:none;padding:4px}
+.pad button b{font-family:var(--affiche);font-size:clamp(18px,3.4vw,28px);font-weight:400;color:var(--laiton-clair);line-height:1.05}
+.pad button small{font-size:11px;color:var(--texte-2);font-weight:700;letter-spacing:.06em}
+.pad button.actif{background:var(--laiton);border-color:var(--laiton)}
+.pad button.actif b,.pad button.actif small{color:#1b1408}
+.pad button.note{border-color:var(--laiton-2)}
+.pad button.note[aria-pressed="true"]{background:#3a2d17;border-color:var(--laiton)}
+@media (max-width:640px){.pad{grid-template-columns:repeat(5,minmax(0,1fr));height:auto}.pad button{min-height:56px}}
+
+/* ---------- Composer ---------- */
+.compo{flex:none;display:flex;flex-direction:column;gap:6px;max-height:70%;min-width:0;overflow:hidden;background:var(--laque-2);border-radius:10px;padding:8px}
+.c-tete{display:flex;gap:6px;flex-wrap:nowrap;align-items:center;overflow-x:auto;scrollbar-width:none;flex:none}
+.c-tete::-webkit-scrollbar{display:none}
+.c-tete > *{flex:none}
+.c-tete .c-titre{flex:1 0 150px;min-width:150px;cursor:text}
+.c-grille{display:flex;flex-direction:column;gap:6px;flex:1 1 auto;min-height:50px;overflow-y:auto;overscroll-behavior:contain}
+.c-section{display:flex;flex-wrap:wrap;gap:5px;align-items:stretch}
+.c-nom{width:84px;background:transparent;border:1px dashed var(--reflet);border-radius:8px;color:var(--laiton);font-weight:700;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;padding:0 6px;min-height:46px}
+.c-mesure{min-width:60px;min-height:46px;border:1px solid var(--reflet);background:var(--laque);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;padding:3px 6px;max-width:130px}
+.c-mesure b{font-family:var(--affiche);font-weight:400;font-size:18px;color:var(--laiton-clair);line-height:1.05}
+.c-mesure small{font-size:9.5px;color:var(--texte-2);font-weight:700}
+.c-mesure em{font-size:10px;color:var(--texte);font-style:normal;max-width:118px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.c-mesure.choisie{border-color:var(--laiton);box-shadow:0 0 0 1px var(--laiton)}
+.c-mesure.joue{background:var(--laiton);border-color:var(--laiton)}
+.c-mesure.joue b,.c-mesure.joue small,.c-mesure.joue em{color:#1b1408}
+.c-ajout{width:46px;min-height:46px;border:1px dashed var(--laiton-2);background:transparent;border-radius:8px;color:var(--laiton);font-size:18px;cursor:pointer}
+.c-ajout.choisie{background:#2a2217;border-style:solid;border-color:var(--laiton)}
+.c-edition{display:flex;gap:6px;flex-wrap:wrap;align-items:center;min-height:36px;flex:none}
+@media (max-height:520px){.c-edition:not(:has(button,input)){display:none}}
+.c-paroles{flex:1;min-width:150px;cursor:text}
+.c-aide{color:var(--texte-2);font-size:12.5px}
+.c-lbl{font-weight:700;color:var(--laiton);font-family:var(--affiche);font-size:18px}
+.c-palette{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:thin;flex:none}
+.c-palette button{flex:none;min-width:58px;height:44px;border:1px solid var(--reflet);background:linear-gradient(180deg,var(--laque-3),var(--laque));border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;padding:0 8px}
+.c-palette button b{font-family:var(--affiche);font-weight:400;font-size:19px;color:var(--laiton-clair);line-height:1}
+.c-palette button small{font-size:10px;color:var(--texte-2);font-weight:700}
+.c-palette .c-sugg{font-size:12px;font-weight:600;color:var(--texte-2);white-space:nowrap;border-style:dashed}
+.c-sep{flex:none;width:1px;background:var(--reflet);margin:4px 2px}
+.c-transport{display:flex;gap:6px;flex-wrap:nowrap;align-items:center;flex:none;min-width:0}
+.c-transport:has(.c-prompteur:empty){display:none}
+.compo.lecture .c-edition{display:none}
+.c-transport .bt{flex:none}
+.bt.plein{background:var(--laiton);color:#1b1408;border-color:var(--laiton)}
+.c-prompteur{font-family:var(--affiche);font-size:19px;line-height:1.25;color:var(--laiton-clair);flex:1;min-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ---------- Arrangeur ---------- */
+.arr{flex:none;display:flex;flex-direction:column;gap:6px;background:var(--laque-2);border-radius:10px;padding:8px;min-width:0}
+.a-ligne{display:flex;gap:6px;align-items:center;overflow-x:auto;scrollbar-width:none;flex-wrap:nowrap}
+.a-ligne::-webkit-scrollbar{display:none}
+.a-ligne > *{flex:none}
+.a-accord{margin-left:auto;font-family:var(--affiche);font-size:30px;line-height:1;color:var(--laiton-clair);min-width:84px;text-align:right;padding-right:4px}
+.a-sections button{min-width:46px}
+.a-sections button.attente{box-shadow:inset 0 0 0 2px var(--laiton);animation:clignote .5s infinite alternate}
+@keyframes clignote{to{opacity:.5}}
+@media (prefers-reduced-motion:reduce){.a-sections button.attente{animation:none}}
+.a-vol{display:inline-flex;gap:6px;align-items:center;color:var(--texte-2);font-weight:600;font-size:13px}
+.a-vol input{width:110px}
+.blanche.gauche{background:linear-gradient(180deg,#d6dbdf 0%,#e3e7ea 12%,#e3e7ea 90%,#c6ccd1 100%)}
+.blanche.gauche.appuyee{background:linear-gradient(180deg,#b5c0ca 0%,#ccd5dc 100%)}
+.noire.gauche{background:linear-gradient(180deg,#27313b 0%,#141a20 70%,#07090b 100%)}
+
+/* ---------- Menu ---------- */
+.voile{position:fixed;inset:0;background:#000a;z-index:20}
+.menu{position:fixed;top:0;bottom:0;left:0;width:min(440px,100%);background:var(--laque-2);z-index:21;overflow-y:auto;overscroll-behavior:contain;
+  padding:calc(env(safe-area-inset-top,0px) + 14px) 18px calc(env(safe-area-inset-bottom,0px) + 24px) max(18px, env(safe-area-inset-left,0px));box-shadow:10px 0 40px #000}
+.menu header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
+.menu h2{font-family:var(--affiche);font-weight:400;color:var(--laiton);font-size:30px;margin:0;letter-spacing:.05em}
+.menu section{border-top:1px solid var(--reflet);padding-block:14px;display:grid;gap:10px}
+.menu h3{margin:0;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--laiton);font-weight:700}
+.ligne{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.ligne > label,.ligne > span{color:var(--texte-2);font-weight:600}
+.menu p{margin:0;color:var(--texte-2);font-size:13px}
+.grille-btn{display:flex;flex-wrap:wrap;gap:6px}
+input[type=range]{accent-color:var(--laiton);width:150px}
+.pas{display:inline-flex;align-items:center;gap:6px}
+.pas output{min-width:64px;text-align:center;font-weight:700;font-variant-numeric:tabular-nums}
+.etat{font-size:13px;color:var(--texte-2);font-variant-numeric:tabular-nums}
+.voyant{width:9px;height:9px;border-radius:50%;background:#3a3531;display:inline-block}
+.voyant.actif{background:var(--rouge);box-shadow:0 0 8px var(--rouge)}
+.menu kbd{font-family:var(--ui);font-size:11.5px;border:1px solid var(--reflet);border-bottom-width:2px;border-radius:4px;padding:0 5px;background:var(--laque);color:var(--texte)}
+.cache-tactile{display:none}
+@media (hover:hover) and (pointer:fine){.cache-tactile{display:grid}}
+@media (max-width:1000px){.masque-etroit{display:none}}
+@media (max-width:700px){.battements{display:none}}
+@media (max-width:560px){.masque-tres-etroit{display:none}}
+</style>
+
+<div class="app" id="app">
+  <div class="barre" role="toolbar" aria-label="Commandes principales">
+    <button type="button" class="bt carre" id="ouvrir-menu" aria-label="Ouvrir le menu" aria-expanded="false">☰</button>
+    <span class="logo masque-etroit">Ivoire</span>
+    <div class="seg" role="group" aria-label="Disposition">
+      <button type="button" id="mode-piano" data-mode="piano" aria-pressed="true">Piano</button>
+      <button type="button" id="mode-deux" data-mode="deux" aria-pressed="false">2 mains</button>
+      <button type="button" id="mode-accords" data-mode="accords" aria-pressed="false">Accords</button>
+      <button type="button" id="mode-composer" data-mode="composer" aria-pressed="false">Composer</button>
+      <button type="button" id="mode-arrangeur" data-mode="arrangeur" aria-pressed="false">Arrangeur</button>
+    </div>
+    <select class="bt masque-etroit" id="son-rapide" aria-label="Son"></select>
+    <button type="button" class="bt" id="rythme-lancer" aria-pressed="false" aria-label="Lancer le rythme">▶ <span id="rythme-nom-court" class="masque-etroit">Rythme</span></button>
+    <span class="tempo">
+      <button type="button" class="bt carre" id="bpm-moins" aria-label="Ralentir">−</button>
+      <output id="bpm-aff">90 bpm</output>
+      <button type="button" class="bt carre" id="bpm-plus" aria-label="Accélérer">+</button>
+    </span>
+    <span class="battements" id="battements" aria-hidden="true"></span>
+    <button type="button" class="bt" id="pedale" aria-pressed="false">Pédale</button>
+    <span class="accord" id="accord" aria-live="polite"></span>
+    <button type="button" class="bt carre" id="plein-ecran" aria-label="Plein écran">⛶</button>
+  </div>
+
+  <div class="bandeau" id="bandeau"><span class="portrait">Tourne ton téléphone en mode paysage pour avoir plus de touches.</span></div>
+
+  <main class="scene" id="scene"></main>
+</div>
+
+<div class="voile" id="voile" hidden></div>
+<aside class="menu" id="menu" hidden aria-label="Réglages">
+  <header>
+    <h2>Piano Ivoire</h2>
+    <button type="button" class="bt carre" id="fermer-menu" aria-label="Fermer le menu">✕</button>
+  </header>
+
+  <section aria-labelledby="m-son">
+    <h3 id="m-son">Son</h3>
+    <div class="grille-btn" id="sons" role="group" aria-label="Son"></div>
+    <div class="ligne"><label for="volume">Volume</label><input type="range" id="volume" min="0" max="100" value="80"></div>
+    <div class="ligne"><label for="reverb">Réverbération (église)</label><input type="range" id="reverb" min="0" max="100" value="35"></div>
+  </section>
+
+  <section aria-labelledby="m-rythme">
+    <h3 id="m-rythme">Rythme</h3>
+    <div class="grille-btn" id="styles" role="group" aria-label="Style de rythme"></div>
+    <div class="ligne"><span>Tempo</span>
+      <span class="pas"><button type="button" class="bt carre" id="bpm-moins-2" aria-label="Ralentir">−</button><output id="bpm-aff-2">90 bpm</output><button type="button" class="bt carre" id="bpm-plus-2" aria-label="Accélérer">+</button></span>
+    </div>
+    <div class="ligne"><label for="bpm-saisie">Tempo exact (20 à 1000)</label><input type="number" class="bt" id="bpm-saisie" min="20" max="1000" step="1" inputmode="numeric" style="width:96px;cursor:text"></div>
+    <div class="ligne"><span>Taper le tempo</span><button type="button" class="bt" id="tap">Tape ici en rythme</button></div>
+    <div class="ligne"><label for="vol-rythme">Volume du rythme</label><input type="range" id="vol-rythme" min="0" max="100" value="70"></div>
+  </section>
+
+  <section aria-labelledby="m-ton">
+    <h3 id="m-ton">Tonalité et accords</h3>
+    <div class="ligne"><label for="tonalite">Tonalité</label>
+      <span class="grille-btn"><select class="bt" id="tonalite"></select>
+      <span class="seg" role="group" aria-label="Mode"><button type="button" id="ton-maj" data-maj="1" aria-pressed="true">Majeur</button><button type="button" id="ton-min" data-maj="0" aria-pressed="false">Mineur</button></span></span>
+    </div>
+    <div class="ligne"><label for="gamme">Montrer la gamme sur les touches</label><button type="button" class="bt" id="gamme" aria-pressed="false">Non</button></div>
+    <div class="ligne"><span>Transposer (le son)</span>
+      <span class="pas"><button type="button" class="bt carre" id="tr-moins" aria-label="Transposer vers le bas">−</button><output id="tr-aff">0</output><button type="button" class="bt carre" id="tr-plus" aria-label="Transposer vers le haut">+</button></span>
+    </div>
+    <p>Transposer : tu joues en Do, le piano sonne dans la tonalité de ton chant. Le mode <strong>Accords</strong> affiche les accords de la tonalité choisie.</p>
+  </section>
+
+  <section aria-labelledby="m-clavier">
+    <h3 id="m-clavier">Clavier</h3>
+    <div class="ligne"><span>Taille des touches</span>
+      <span class="seg" role="group" aria-label="Taille des touches">
+        <button type="button" id="t-grand" data-taille="10" aria-pressed="false">Grandes</button>
+        <button type="button" id="t-moyen" data-taille="14" aria-pressed="true">Moyennes</button>
+        <button type="button" id="t-petit" data-taille="21" aria-pressed="false">Petites</button>
+      </span>
+    </div>
+    <div class="ligne"><span>Nom des notes</span>
+      <span class="seg" role="group" aria-label="Nom des notes"><button type="button" id="n-fr" data-nom="fr" aria-pressed="true">Do Ré Mi</button><button type="button" id="n-en" data-nom="en" aria-pressed="false">C D E</button><button type="button" id="n-aucun" data-nom="aucun" aria-pressed="false">Aucun</button></span>
+    </div>
+    <div class="ligne cache-tactile"><span>Clavier d'ordinateur</span>
+      <span class="seg" role="group" aria-label="Disposition du clavier"><button type="button" id="k-azerty" data-clavier="azerty" aria-pressed="true">AZERTY</button><button type="button" id="k-qwerty" data-clavier="qwerty" aria-pressed="false">QWERTY</button></span>
+    </div>
+    <p class="cache-tactile" id="aide-clavier"></p>
+  </section>
+
+  <section aria-labelledby="m-midi">
+    <h3 id="m-midi">Clavier MIDI</h3>
+    <p>Branche un vrai clavier (USB, avec un adaptateur OTG sur téléphone Android), puis touche <strong>Connecter</strong>. Tu joues sur de vraies touches avec le son de ce piano. La pédale du clavier fonctionne aussi.</p>
+    <div class="grille-btn"><button type="button" class="bt" id="midi-connecter">Connecter</button></div>
+    <span class="etat" id="midi-etat">Aucun clavier connecté.</span>
+  </section>
+
+  <section aria-labelledby="m-apprendre">
+    <h3 id="m-apprendre">Exercices</h3>
+    <p>Des exercices dans la tonalité choisie. <strong>Écouter</strong> les joue, <strong>Jouer</strong> allume en doré la prochaine touche.</p>
+    <div class="grille-btn" id="melodies" role="group" aria-label="Mélodies"></div>
+    <div class="grille-btn"><button type="button" class="bt" id="ecouter">Écouter</button><button type="button" class="bt" id="jouer" aria-pressed="false">Jouer</button><button type="button" class="bt" id="arreter-melodie">Arrêter</button></div>
+  </section>
+
+  <section aria-labelledby="m-chants">
+    <h3 id="m-chants">Mes chants</h3>
+    <p>Tes chants sont gardés dans ce téléphone. Fais une copie de temps en temps : tu pourras la réimporter sur un autre appareil.</p>
+    <div class="grille-btn"><button type="button" class="bt" id="chants-exporter">Sauvegarder dans un fichier</button>
+      <label class="bt" for="chants-importer" style="cursor:pointer">Importer un fichier</label>
+      <input type="file" id="chants-importer" accept="application/json,.json" hidden></div>
+    <span class="etat" id="chants-etat"></span>
+  </section>
+
+  <section aria-labelledby="m-enreg">
+    <h3 id="m-enreg">Enregistreur</h3>
+    <div class="grille-btn"><button type="button" class="bt" id="enregistrer"><span class="voyant" id="voyant"></span><span id="txt-enreg">Enregistrer</span></button><button type="button" class="bt" id="rejouer">Réécouter</button><button type="button" class="bt" id="effacer">Effacer</button></div>
+    <span class="etat" id="etat-enreg">Aucun enregistrement.</span>
+  </section>
+
+  <section aria-labelledby="m-conseils">
+    <h3 id="m-conseils">Conseils</h3>
+    <p>Le son « Piano à queue » est un vrai piano Yamaha C5 enregistré : <em>Salamander Grand Piano</em> d'Alexander Holm, sous licence <a href="https://creativecommons.org/licenses/by/3.0/deed.fr" target="_blank" rel="noopener" style="color:var(--laiton)">CC BY 3.0</a>. La batterie et les percussions sont de vrais instruments enregistrés : <em>Versilian Community Sample Library</em>, domaine public (CC0).</p>
+    <p>Sur iPhone, désactive le mode silencieux (bouton sur le côté), sinon le piano ne fait aucun son. Pour moins de décalage entre le doigt et le son, branche un casque filaire plutôt que Bluetooth.</p>
+  </section>
+</aside>
+
+<script>
+(function () {
+  "use strict";
+
+  // =========================================================
+  // Données musicales
+  // =========================================================
+  const NOMS = {
+    fr: ["Do", "Do♯", "Ré", "Mi♭", "Mi", "Fa", "Fa♯", "Sol", "La♭", "La", "Si♭", "Si"],
+    en: ["C", "C♯", "D", "E♭", "E", "F", "F♯", "G", "A♭", "A", "B♭", "B"]
+  };
+  const NOIRE = [0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0];
+  const octaveDe = m => Math.floor(m / 12) - 1;
+  const langue = () => (reglages.nom === "en" ? "en" : "fr");
+  const nomPc = pc => NOMS[langue()][((pc % 12) + 12) % 12];
+  const nomDe = (m, oct) => nomPc(m) + (oct ? octaveDe(m) : "");
+  const frequence = m => 440 * Math.pow(2, (m - 69) / 12);
+  const NOTE = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+  const midiDe = s => { const r = s.match(/^([A-G])(#?)(\d)$/); return 12 * (+r[3] + 1) + NOTE[r[1]] + (r[2] ? 1 : 0); };
+
+  // Les 52 touches blanches d'un piano de 88 touches (La0 à Do8)
+  const BLANCHES = [];
+  for (let m = 21; m <= 108; m++) if (!NOIRE[m % 12]) BLANCHES.push(m);
+
+  const QUALITES = {
+    maj: { iv: [0, 4, 7], fr: "", en: "" },
+    min: { iv: [0, 3, 7], fr: "m", en: "m" },
+    dim: { iv: [0, 3, 6], fr: "dim", en: "dim" },
+    aug: { iv: [0, 4, 8], fr: "aug", en: "aug" },
+    sus4: { iv: [0, 5, 7], fr: "sus4", en: "sus4" },
+    sus2: { iv: [0, 2, 7], fr: "sus2", en: "sus2" },
+    "7": { iv: [0, 4, 7, 10], fr: "7", en: "7" },
+    maj7: { iv: [0, 4, 7, 11], fr: "maj7", en: "maj7" },
+    m7: { iv: [0, 3, 7, 10], fr: "m7", en: "m7" },
+    "6": { iv: [0, 4, 7, 9], fr: "6", en: "6" },
+    m7b5: { iv: [0, 3, 6, 10], fr: "m7♭5", en: "m7♭5" }
+  };
+  const nomAccord = (pc, q) => nomPc(pc) + QUALITES[q][langue()];
+
+  // =========================================================
+  // Réglages mémorisés dans ce navigateur
+  // =========================================================
+  const CLE = "piano-ivoire:v2";
+  const reglages = {
+    mode: "piano", son: "concert", volume: 85, reverb: 22, nom: "fr", clavier: "azerty", taille: 14,
+    tonalite: 0, majeur: true, gamme: false, transpo: 0,
+    style: "louange", bpm: 90, volRythme: 70,
+    debuts: { piano: 48, haut: 60, bas: 36, accords: 55, compo: 55, arr: 48 }, chantId: null,
+    arrStyle: "louange", doigte: "complet", couche: false, split: 60, volAccomp: 70, arrSync: true
+  };
+  try {
+    const lu = JSON.parse(localStorage.getItem(CLE) || "{}");
+    if (!lu.sonConcert) { delete lu.son; delete lu.reverb; lu.sonConcert = true; }   // passage au vrai piano pour tout le monde
+    Object.assign(reglages, lu, { debuts: Object.assign({}, reglages.debuts, lu.debuts || {}) });
+  } catch (e) {}
+  let attenteSauvegarde;
+  const sauver = () => { clearTimeout(attenteSauvegarde); attenteSauvegarde = setTimeout(() => { try { localStorage.setItem(CLE, JSON.stringify(reglages)); } catch (e) {} }, 200); };
+
+  // =========================================================
+  // Moteur audio
+  // =========================================================
+  let ctx = null, maitre, batterie, envoiReverb, reverbGain;
+  function audio() {
+    contexte();
+    if (ctx && ctx.state === "suspended") ctx.resume();
+    if (ctx && !veilleDemandee) { veilleDemandee = true; demanderVeille(); }
+    return ctx;
+  }
+  let veilleDemandee = false;
+  function contexte() {
+    if (!ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      ctx = new AC({ latencyHint: "interactive" });
+      const compresseur = ctx.createDynamicsCompressor();
+      compresseur.threshold.value = -12; compresseur.ratio.value = 3; compresseur.attack.value = 0.004;
+      maitre = ctx.createGain(); maitre.gain.value = reglages.volume / 100;
+      const salle = ctx.createConvolver(); salle.buffer = reponseSalle(2.8);
+      reverbGain = ctx.createGain(); reverbGain.gain.value = reglages.reverb / 100 * 0.6;
+      envoiReverb = ctx.createGain(); envoiReverb.gain.value = 1;
+      batterie = ctx.createGain(); batterie.gain.value = reglages.volRythme / 100;
+      maitre.connect(compresseur);
+      maitre.connect(envoiReverb); envoiReverb.connect(salle); salle.connect(reverbGain); reverbGain.connect(compresseur);
+      batterie.connect(compresseur);
+      compresseur.connect(ctx.destination);
+    }
+    return ctx;
+  }
+
+  // =========================================================
+  // Piano à queue enregistré : Salamander Grand Piano (Yamaha C5), une note toutes les tierces mineures
+  // =========================================================
+  const ECHANTILLONS = ["A0", "C1", "Ds1", "Fs1", "A1", "C2", "Ds2", "Fs2", "A2", "C3", "Ds3", "Fs3", "A3", "C4", "Ds4", "Fs4", "A4", "C5", "Ds5", "Fs5", "A5", "C6", "Ds6", "Fs6", "A6", "C7", "Ds7", "Fs7", "A7", "C8"];
+  const tampons = new Map();    // midi de l'enregistrement → AudioBuffer
+  let chargement = null, charges = 0;
+  const midiEchantillon = n => { const r = n.match(/^([A-G])(s?)([0-9])$/); return 12 * (+r[3] + 1) + NOTE[r[1]] + (r[2] ? 1 : 0); };
+  const decoder = b => new Promise((ok, ko) => ctx.decodeAudioData(b, ok, ko));
+  function chargerPiano() {
+    if (chargement || !contexte()) return chargement;
+    majChargement();
+    chargement = Promise.all(ECHANTILLONS.map(n =>
+      fetch("sons/piano/" + n + ".mp3")
+        .then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+        .then(decoder)
+        .then(buf => { tampons.set(midiEchantillon(n), buf); charges++; majChargement(); })
+        .catch(() => { charges++; majChargement(); })
+    ));
+    return chargement;
+  }
+  function majChargement() {
+    const el = document.getElementById("accord");
+    if (charges < ECHANTILLONS.length) el.textContent = "Piano… " + Math.round(charges / ECHANTILLONS.length * 100) + " %";
+    else if (el.textContent.startsWith("Piano…")) el.textContent = tampons.size ? "" : "Son de secours";
+  }
+  function echantillonProche(m) {
+    let meilleur = null, ecart = 99;
+    tampons.forEach((b, s) => { const d = Math.abs(m - s); if (d < ecart) { ecart = d; meilleur = s; } });
+    return meilleur;
+  }
+  function reponseSalle(duree) {
+    const n = Math.floor(ctx.sampleRate * duree), buf = ctx.createBuffer(2, n, ctx.sampleRate);
+    for (let c = 0; c < 2; c++) {
+      const d = buf.getChannelData(c);
+      for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 3);
+    }
+    return buf;
+  }
+  let bruitBuf = null;
+  function bruit() {
+    if (!bruitBuf) {
+      const n = Math.floor(ctx.sampleRate * 0.6); bruitBuf = ctx.createBuffer(1, n, ctx.sampleRate);
+      const d = bruitBuf.getChannelData(0); for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+    }
+    return bruitBuf;
+  }
+  const stop = (s, t) => { try { s.stop(t); } catch (e) {} };
+  const osc = (type, f, t) => { const o = ctx.createOscillator(); o.type = type; o.frequency.value = f; o.start(t); return o; };
+
+  const SONS = [
+    { id: "concert", nom: "Piano à queue" },
+    { id: "piano", nom: "Piano léger" },
+    { id: "electrique", nom: "Piano électrique" },
+    { id: "eglise", nom: "Orgue d'église" },
+    { id: "nappe", nom: "Nappe de louange" },
+    { id: "cordes", nom: "Cordes" }
+  ];
+  const TENU = { eglise: true, nappe: true, cordes: true };   // sons qui tiennent tant que la touche est enfoncée
+
+  function creerVoix(m, force, sonForce) {
+    const son = sonForce || reglages.son;
+    const t = ctx.currentTime, f = frequence(m);
+    const sortie = ctx.createGain(); sortie.gain.value = 0; sortie.connect(maitre);
+    const sources = [];
+    const brancher = (noeud, gain, cible) => { const g = ctx.createGain(); g.gain.value = gain; noeud.connect(g); g.connect(cible || sortie); return g; };
+
+    if (son === "concert" && tampons.size) {
+      const s = echantillonProche(m), src = ctx.createBufferSource();
+      src.buffer = tampons.get(s);
+      src.playbackRate.value = Math.pow(2, (m - s) / 12);
+      // Jouer doucement donne un son plus sombre, comme sur un vrai piano
+      const filtre = ctx.createBiquadFilter(); filtre.type = "lowpass";
+      filtre.frequency.value = 900 + 15000 * force * force; filtre.Q.value = 0.3;
+      src.connect(filtre); filtre.connect(sortie);
+      sortie.gain.value = 0.12 + 0.95 * Math.pow(force, 1.6);
+      src.start(t); sources.push(src);
+      stop(src, t + src.buffer.duration / src.playbackRate.value + 0.1);
+      return { sortie, sources, son };
+    }
+    if (son === "piano" || son === "concert") {
+      const filtre = ctx.createBiquadFilter(); filtre.type = "lowpass";
+      filtre.frequency.setValueAtTime(Math.min(15000, f * 7 + 3500 * force), t);
+      filtre.frequency.exponentialRampToValueAtTime(Math.max(f * 2.2, 700), t + 1.6);
+      filtre.connect(sortie);
+      const partiels = [1, 0.5, 0.28, 0.14, 0.07, 0.04], somme = 2.03, B = 0.00035;
+      partiels.forEach((a, i) => {
+        const n = i + 1, fp = f * n * Math.sqrt(1 + B * n * n);
+        if (fp > 17000) return;
+        const o = osc("sine", fp, t); brancher(o, a / somme, filtre); sources.push(o);
+        if (n === 1) { const o2 = osc("sine", fp * 1.001, t); brancher(o2, 0.25, filtre); sources.push(o2); }
+      });
+      const marteau = ctx.createBufferSource(), bp = ctx.createBiquadFilter(), gm = ctx.createGain();
+      marteau.buffer = bruit(); bp.type = "bandpass"; bp.frequency.value = Math.min(f * 3, 9000); bp.Q.value = 1.2;
+      gm.gain.setValueAtTime(0.09 * force, t); gm.gain.exponentialRampToValueAtTime(0.0001, t + 0.045);
+      marteau.connect(bp); bp.connect(gm); gm.connect(sortie); marteau.start(t); stop(marteau, t + 0.06);
+      const pic = 0.5 * force * (m > 84 ? 0.75 : 1);
+      const tau = Math.min(4.5, Math.max(0.45, 4.3 - (m - 40) * 0.065));
+      sortie.gain.setValueAtTime(0, t);
+      sortie.gain.linearRampToValueAtTime(pic, t + 0.004);
+      sortie.gain.setTargetAtTime(pic * 0.38, t + 0.004, 0.09);
+      sortie.gain.setTargetAtTime(0, t + 0.3, tau);
+      sources.forEach(s => stop(s, t + 0.3 + tau * 6));
+    } else if (son === "electrique") {
+      const p = osc("sine", f, t), mod = osc("sine", f, t), gMod = ctx.createGain();
+      gMod.gain.setValueAtTime(f * (1.2 + 2.2 * force), t); gMod.gain.exponentialRampToValueAtTime(f * 0.15, t + 1.2);
+      mod.connect(gMod); gMod.connect(p.frequency);
+      const cloche = osc("sine", f * 14, t), gC = ctx.createGain();
+      gC.gain.setValueAtTime(f * 0.9 * force, t); gC.gain.exponentialRampToValueAtTime(1, t + 0.12);
+      cloche.connect(gC); gC.connect(p.frequency);
+      brancher(p, 0.9); sources.push(p, mod, cloche);
+      const pic = 0.42 * force;
+      sortie.gain.setValueAtTime(0, t); sortie.gain.linearRampToValueAtTime(pic, t + 0.006);
+      sortie.gain.setTargetAtTime(pic * 0.45, t + 0.006, 0.25); sortie.gain.setTargetAtTime(0, t + 0.6, 2.2);
+      sources.forEach(s => stop(s, t + 14));
+    } else if (son === "eglise") {
+      // Orgue à tuyaux : fondamentales 8', 4', 2' et une mixture douce
+      const filtre = ctx.createBiquadFilter(); filtre.type = "lowpass"; filtre.frequency.value = Math.min(9000, f * 10); filtre.connect(sortie);
+      [[0.5, 0.45, "sine"], [1, 1, "triangle"], [2, 0.55, "triangle"], [3, 0.2, "sine"], [4, 0.3, "sine"], [8, 0.08, "sine"]].forEach(([r, a, type]) => {
+        const o = osc(type, f * r, t); brancher(o, a / 3.1, filtre); sources.push(o);
+      });
+      const souffle = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), gs = ctx.createGain();
+      souffle.buffer = bruit(); souffle.loop = true; hp.type = "bandpass"; hp.frequency.value = Math.min(f * 4, 8000); hp.Q.value = 3; gs.gain.value = 0.012;
+      souffle.connect(hp); hp.connect(gs); gs.connect(sortie); souffle.start(t); sources.push(souffle);
+      sortie.gain.setValueAtTime(0, t); sortie.gain.linearRampToValueAtTime(0.3 * (0.7 + 0.3 * force), t + 0.05);
+    } else if (son === "nappe") {
+      // Nappe douce : plusieurs dents de scie désaccordées, filtre qui respire
+      const filtre = ctx.createBiquadFilter(); filtre.type = "lowpass"; filtre.Q.value = 0.7;
+      filtre.frequency.setValueAtTime(400, t); filtre.frequency.linearRampToValueAtTime(Math.min(4200, f * 5 + 900), t + 1.4);
+      const lfo = osc("sine", 0.18, t), gLfo = ctx.createGain(); gLfo.gain.value = 500; lfo.connect(gLfo); gLfo.connect(filtre.frequency); sources.push(lfo);
+      filtre.connect(sortie);
+      [-9, -3, 3, 9].forEach(c => { const o = osc("sawtooth", f * Math.pow(2, c / 1200), t); brancher(o, 0.09, filtre); sources.push(o); });
+      const sub = osc("sine", f / 2, t); brancher(sub, 0.18, filtre); sources.push(sub);
+      sortie.gain.setValueAtTime(0, t); sortie.gain.linearRampToValueAtTime(0.42, t + 0.9);
+    } else {
+      // Cordes : attaque lente, vibrato
+      const filtre = ctx.createBiquadFilter(); filtre.type = "lowpass"; filtre.frequency.value = Math.min(6000, f * 6 + 800); filtre.connect(sortie);
+      const vib = osc("sine", 5.4, t), gv = ctx.createGain(); gv.gain.value = f * 0.005; vib.connect(gv); sources.push(vib);
+      [-6, 0, 7].forEach(c => { const o = osc("sawtooth", f * Math.pow(2, c / 1200), t); gv.connect(o.frequency); brancher(o, 0.11, filtre); sources.push(o); });
+      sortie.gain.setValueAtTime(0, t); sortie.gain.linearRampToValueAtTime(0.38 * (0.6 + 0.4 * force), t + 0.35);
+    }
+    return { sortie, sources, son };
+  }
+  function relacher(v) {
+    const t = ctx.currentTime;
+    const duree = v.son === "nappe" ? 0.6 : v.son === "cordes" ? 0.3 : v.son === "eglise" ? 0.06 : v.son === "concert" ? 0.11 : 0.08;
+    v.sortie.gain.cancelScheduledValues(t);
+    v.sortie.gain.setValueAtTime(v.sortie.gain.value, t);
+    v.sortie.gain.setTargetAtTime(0, t, duree);
+    v.sources.forEach(s => stop(s, t + duree * 6 + 0.1));
+  }
+
+  // =========================================================
+  // Notes jouées (clé = origine + note, pour que le clavier et les accords ne se gênent pas)
+  // =========================================================
+  const voix = new Map();      // cle → { v, m }
+  const tenues = new Set();    // clés relâchées mais tenues par la pédale
+  let pedale = false;
+
+  function jouer(cle, m, force, opts = {}) {
+    if (!audio() || m < 12 || m > 120) return;
+    if (voix.has(cle)) relacher(voix.get(cle).v);
+    tenues.delete(cle);
+    voix.set(cle, { v: creerVoix(m, force, opts.son), m });
+    if (!opts.demo) {
+      if (enregistrement) enregistrement.evts.push({ t: performance.now() - enregistrement.t0, cle, m, on: 1, f: force });
+      if (lecteur.actif && lecteur.enregistre && lecteur.debutPerf && (cle.startsWith("k:") || cle.startsWith("midi:")))
+        lecteur.evts.push({ t: (performance.now() - lecteur.debutPerf) / (60000 / reglages.bpm), m: m - reglages.transpo, on: 1, f: force });
+    }
+    majAccord();
+  }
+  function lacher(cle, opts = {}) {
+    const x = voix.get(cle);
+    if (!opts.demo && enregistrement) enregistrement.evts.push({ t: performance.now() - enregistrement.t0, cle, on: 0 });
+    if (!opts.demo && x && lecteur.actif && lecteur.enregistre && lecteur.debutPerf && (cle.startsWith("k:") || cle.startsWith("midi:")))
+      lecteur.evts.push({ t: (performance.now() - lecteur.debutPerf) / (60000 / reglages.bpm), m: x.m - reglages.transpo, on: 0 });
+    if (!x) return;
+    if (pedale && !TENU[x.v.son] && !opts.force) { tenues.add(cle); return; }
+    relacher(x.v); voix.delete(cle); majAccord();
+  }
+  function reglerPedale(actif) {
+    pedale = actif;
+    document.getElementById("pedale").setAttribute("aria-pressed", actif ? "true" : "false");
+    if (!actif) { tenues.forEach(c => { const x = voix.get(c); if (x) { relacher(x.v); voix.delete(c); } }); tenues.clear(); majAccord(); }
+  }
+
+  // Reconnaissance de l'accord joué
+  function reconnaitre(midis) {
+    const pcs = [...new Set(midis.map(m => m % 12))];
+    if (pcs.length < 3) return null;
+    const basse = Math.min(...midis) % 12;
+    const ordre = ["maj", "min", "7", "m7", "maj7", "6", "dim", "m7b5", "sus4", "sus2", "aug"];
+    for (const q of ordre) {
+      const iv = QUALITES[q].iv;
+      if (iv.length !== pcs.length) continue;
+      for (const r of pcs) {
+        const rel = pcs.map(p => (p - r + 12) % 12).sort((a, b) => a - b);
+        if (rel.join() === iv.join()) return nomAccord(r, q) + (basse !== r ? " / " + nomPc(basse) : "");
+      }
+    }
+    return null;
+  }
+  // Même reconnaissance, mais renvoie la fondamentale et la qualité
+  function analyser(midis) {
+    const pcs = [...new Set(midis.map(m => m % 12))];
+    if (pcs.length < 3) return null;
+    const ordre = ["maj", "min", "7", "m7", "maj7", "6", "dim", "m7b5", "sus4", "sus2", "aug"];
+    for (const q of ordre) {
+      const iv = QUALITES[q].iv; if (iv.length !== pcs.length) continue;
+      for (const rac of pcs) {
+        const rel = pcs.map(p => (p - rac + 12) % 12).sort((a, b) => a - b);
+        if (rel.join() === iv.join()) return { pc: rac, q };
+      }
+    }
+    return null;
+  }
+  let accordAffiche = "";
+  function majAccord() {
+    if (reglages.mode === "arrangeur") return;          // l'arrangeur affiche l'accord de la main gauche
+    const actives = [...voix.entries()].filter(([c]) => !c.startsWith("d")).map(([, x]) => x.m);
+    const nom = reconnaitre(actives);
+    if (nom) accordAffiche = nom;
+    if (!actives.length) accordAffiche = accordAffiche;   // on garde le dernier accord reconnu affiché
+    document.getElementById("accord").textContent = accordAffiche;
+  }
+
+  // =========================================================
+  // Claviers
+  // =========================================================
+  const CODES = ["KeyA", "KeyW", "KeyS", "KeyE", "KeyD", "KeyF", "KeyT", "KeyG", "KeyY", "KeyH", "KeyU", "KeyJ", "KeyK", "KeyO", "KeyL", "KeyP", "Semicolon", "Quote"];
+  const LIBELLES = {
+    azerty: { KeyA: "Q", KeyW: "Z", KeyS: "S", KeyE: "E", KeyD: "D", KeyF: "F", KeyT: "T", KeyG: "G", KeyY: "Y", KeyH: "H", KeyU: "U", KeyJ: "J", KeyK: "K", KeyO: "O", KeyL: "L", KeyP: "P", Semicolon: "M", Quote: "Ù", KeyZ: "W", KeyX: "X" },
+    qwerty: { KeyA: "A", KeyW: "W", KeyS: "S", KeyE: "E", KeyD: "D", KeyF: "F", KeyT: "T", KeyG: "G", KeyY: "Y", KeyH: "H", KeyU: "U", KeyJ: "J", KeyK: "K", KeyO: "O", KeyL: "L", KeyP: "P", Semicolon: ";", Quote: "'", KeyZ: "Z", KeyX: "X" }
+  };
+  const ecranTactile = !window.matchMedia("(hover:hover) and (pointer:fine)").matches;
+  const zones = [];             // { id, role, debut (index de blanche), nb, el, touches, carte, fenetre }
+  const scene = document.getElementById("scene");
+
+  const indexDe = m => BLANCHES.indexOf(m);
+  function blanchePlusProche(m) { while (NOIRE[m % 12]) m--; return Math.max(0, indexDe(Math.min(108, Math.max(21, m)))); }
+
+  function construireScene() {
+    scene.textContent = ""; zones.length = 0;
+    const mode = reglages.mode;
+    compo = null;
+    if (mode === "composer") construireComposeur();
+    if (mode === "arrangeur") construireArrangeur();
+    const def = mode === "deux"
+      ? [{ id: "haut", role: "Main droite" }, { id: "bas", role: "Main gauche" }]
+      : mode === "accords" ? [{ id: "accords", role: "Mélodie" }]
+      : mode === "composer" ? [{ id: "compo", role: "Ta mélodie" }]
+      : mode === "arrangeur" ? [{ id: "arr", role: "Accords | Mélodie" }] : [{ id: "piano", role: "88 touches" }];
+    def.forEach(d => {
+      const z = { id: d.id, role: d.role, debut: blanchePlusProche(reglages.debuts[d.id]) };
+      const el = document.createElement("section"); el.className = "zone"; el.setAttribute("aria-label", d.role);
+      el.innerHTML = `<div class="nav"><span class="role">${d.role}</span><button type="button" class="fl" data-dir="-1" aria-label="Octave plus grave">◀</button>` +
+        `<div class="carte88" aria-label="Choisir la partie du clavier">${BLANCHES.map(b => `<i class="${b % 12 === 0 ? "do" : ""}"></i>`).join("")}<span class="fenetre"></span></div>` +
+        `<button type="button" class="fl" data-dir="1" aria-label="Octave plus aiguë">▶</button></div><div class="feutre"></div><div class="touches" data-zone="${d.id}"></div>`;
+      z.el = el; z.touches = el.querySelector(".touches"); z.carte = el.querySelector(".carte88"); z.fenetre = el.querySelector(".fenetre");
+      el.querySelectorAll(".fl").forEach(b => b.addEventListener("click", () => deplacer(z, +b.dataset.dir * 7)));
+      brancherCarte(z);
+      scene.appendChild(el); zones.push(z);
+    });
+    if (mode === "accords") construirePad();
+    dessinerZones();
+  }
+  function nbPour(z) {
+    const w = z.touches.clientWidth || window.innerWidth;
+    return Math.max(7, Math.min(reglages.taille, Math.floor(w / 34)));
+  }
+  function deplacer(z, delta) {
+    z.debut = Math.max(0, Math.min(BLANCHES.length - z.nb, z.debut + delta));
+    reglages.debuts[z.id] = BLANCHES[z.debut]; sauver();
+    dessinerZone(z);
+  }
+  function brancherCarte(z) {
+    let actif = false;
+    const viser = e => {
+      const r = z.carte.getBoundingClientRect();
+      const x = (e.clientX - r.left) / r.width;
+      const centre = Math.round(x * BLANCHES.length - z.nb / 2);
+      z.debut = Math.max(0, Math.min(BLANCHES.length - z.nb, centre));
+      reglages.debuts[z.id] = BLANCHES[z.debut]; sauver();
+      dessinerZone(z);
+    };
+    z.carte.addEventListener("pointerdown", e => { actif = true; z.carte.setPointerCapture(e.pointerId); viser(e); });
+    z.carte.addEventListener("pointermove", e => { if (actif) viser(e); });
+    z.carte.addEventListener("pointerup", () => { actif = false; });
+    z.carte.addEventListener("pointercancel", () => { actif = false; });
+  }
+  function dessinerZones() { zones.forEach(dessinerZone); dessinerAideClavier(); }
+  function zoneClavierOrdi() { return zones.find(z => z.id === "haut" || z.id === "piano" || z.id === "accords" || z.id === "compo" || z.id === "arr"); }
+  function debutClavierOrdi(z) {
+    const bas = BLANCHES[z.debut], haut = BLANCHES[z.debut + z.nb - 1];
+    if (60 >= bas && 60 <= haut) return 60;
+    let m = bas; while (m % 12 !== 0 && m < haut) m++;
+    return m % 12 === 0 ? m : bas;
+  }
+  function dessinerZone(z) {
+    z.nb = nbPour(z);
+    z.debut = Math.max(0, Math.min(BLANCHES.length - z.nb, z.debut));
+    const bas = BLANCHES[z.debut], haut = BLANCHES[z.debut + z.nb - 1];
+    z.bas = bas; z.haut = haut;
+    const larg = 100 / z.nb;
+    const gamme = gammeActuelle();
+    const lettres = {};
+    if (!ecranTactile && z === zoneClavierOrdi()) {
+      const d = debutClavierOrdi(z); z.debutOrdi = d;
+      CODES.forEach((c, i) => { lettres[d + i] = LIBELLES[reglages.clavier][c]; });
+    }
+    let html = "", iB = 0;
+    for (let m = bas; m <= haut; m++) {
+      const lettre = lettres[m] ? `<span class="lettre">${lettres[m]}</span>` : "";
+      const pc = m % 12;
+      const point = reglages.gamme && gamme.includes(pc) ? `<span class="point${pc === reglages.tonalite ? " tonique" : ""}"></span>` : "";
+      const gcl = z.id === "arr" && m < reglages.split ? " gauche" : "";
+      if (NOIRE[pc]) {
+        html += `<div class="touche noire${gcl}" data-midi="${m}" role="button" aria-label="${nomDe(m, true)}" style="left:calc(${iB * larg}% - ${larg * 0.31}%);width:${larg * 0.62}%">${point}${lettre}</div>`;
+      } else {
+        const estDo = pc === 0;
+        const nom = reglages.nom === "aucun" ? "" : `<span class="nom${estDo ? " do" : ""}">${nomDe(m, estDo)}</span>`;
+        html += `<div class="touche blanche${gcl}" data-midi="${m}" role="button" aria-label="${nomDe(m, true)}">${point}${lettre}${nom}</div>`;
+        iB++;
+      }
+    }
+    z.touches.innerHTML = html;
+    z.fenetre.style.left = (z.debut / BLANCHES.length * 100) + "%";
+    z.fenetre.style.width = (z.nb / BLANCHES.length * 100) + "%";
+    // Réafficher les touches enfoncées et les marques
+    appuis.forEach((a) => { if (a.zone === z.id) marquer(z, a.m, true); });
+    marquerSuivante(); marquerAccordPad();
+  }
+  function toucheEl(z, m) { return z.touches.querySelector(`[data-midi="${m}"]`); }
+  function marquer(z, m, on) { const el = toucheEl(z, m); if (el) el.classList.toggle("appuyee", on); }
+
+  // ---------- Toucher, souris, plusieurs doigts ----------
+  const appuis = new Map();   // pointerId ou code clavier → { zone, m }
+  const cleNote = (zone, m) => `k:${zone}:${m}`;
+  const sortieDe = m => m + reglages.transpo;
+
+  function appuyer(id, zoneId, m, force) {
+    const z = zones.find(x => x.id === zoneId); if (!z) return;
+    appuis.set(id, { zone: zoneId, m });
+    marquer(z, m, true);
+    if (zoneId === "arr" && m < reglages.split) { gaucheAppui(m); return; }
+    jouer(cleNote(zoneId, m), sortieDe(m), force);
+    if (zoneId === "arr" && reglages.couche) jouer("couche:" + m, sortieDe(m), force * 0.7, { son: "nappe" });
+    verifierMelodie(m);
+  }
+  function relever(id) {
+    const a = appuis.get(id); if (!a) return;
+    appuis.delete(id);
+    const encore = [...appuis.values()].some(x => x.zone === a.zone && x.m === a.m);
+    if (encore) return;
+    const z = zones.find(x => x.id === a.zone); if (z) marquer(z, a.m, false);
+    if (a.zone === "arr" && a.m < reglages.split) { gaucheLacher(a.m); return; }
+    lacher(cleNote(a.zone, a.m));
+    if (a.zone === "arr") lacher("couche:" + a.m);
+  }
+  function forceDepuis(e, el) {
+    const r = el.getBoundingClientRect();
+    return 0.45 + 0.55 * Math.min(1, Math.max(0, (e.clientY - r.top) / r.height));
+  }
+  scene.addEventListener("pointerdown", e => {
+    const el = e.target.closest(".touche"); if (!el) return;
+    e.preventDefault();
+    const zoneId = el.closest(".touches").dataset.zone;
+    appuyer("p" + e.pointerId, zoneId, +el.dataset.midi, forceDepuis(e, el));
+  });
+  window.addEventListener("pointermove", e => {
+    const id = "p" + e.pointerId, a = appuis.get(id); if (!a) return;
+    const cible = document.elementFromPoint(e.clientX, e.clientY);
+    const el = cible && cible.closest ? cible.closest(".touche") : null;
+    if (!el) return;
+    const zoneId = el.closest(".touches").dataset.zone, m = +el.dataset.midi;
+    if (zoneId === a.zone && m === a.m) return;
+    relever(id); appuyer(id, zoneId, m, 0.7);        // glissando
+  });
+  const finPointeur = e => relever("p" + e.pointerId);
+  window.addEventListener("pointerup", finPointeur);
+  window.addEventListener("pointercancel", finPointeur);
+  scene.addEventListener("contextmenu", e => e.preventDefault());
+  scene.addEventListener("touchstart", e => { if (e.target.closest(".touches")) e.preventDefault(); }, { passive: false });
+  scene.addEventListener("touchmove", e => { if (e.target.closest(".touches")) e.preventDefault(); }, { passive: false });
+
+  // ---------- Clavier d'ordinateur ----------
+  window.addEventListener("keydown", e => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (!document.getElementById("menu").hidden) return;
+    if (e.target.closest && e.target.closest("input, select, textarea")) return;
+    if (e.code === "Space") { e.preventDefault(); if (!e.repeat) reglerPedale(true); return; }
+    if (e.repeat) { if (appuis.has(e.code)) e.preventDefault(); return; }
+    const z = zoneClavierOrdi(); if (!z) return;
+    if (e.code === "KeyZ") { deplacer(z, -7); return; }
+    if (e.code === "KeyX") { deplacer(z, 7); return; }
+    const i = CODES.indexOf(e.code); if (i < 0) return;
+    e.preventDefault();
+    appuyer(e.code, z.id, (z.debutOrdi || 60) + i, 0.75);
+  });
+  window.addEventListener("keyup", e => {
+    if (e.code === "Space") { reglerPedale(false); return; }
+    relever(e.code);
+  });
+  window.addEventListener("blur", () => { [...appuis.keys()].forEach(relever); reglerPedale(false); });
+
+  function dessinerAideClavier() {
+    const z = zoneClavierOrdi(); const el = document.getElementById("aide-clavier"); if (!z || !el) return;
+    const L = LIBELLES[reglages.clavier], d = z.debutOrdi || 60;
+    const bl = CODES.filter((c, i) => !NOIRE[(d + i) % 12]).map(c => `<kbd>${L[c]}</kbd>`).join(" ");
+    const no = CODES.filter((c, i) => NOIRE[(d + i) % 12]).map(c => `<kbd>${L[c]}</kbd>`).join(" ");
+    el.innerHTML = `Blanches : ${bl}<br>Noires : ${no}<br>Octave : <kbd>${L.KeyZ}</kbd> <kbd>${L.KeyX}</kbd> · Pédale : <kbd>Espace</kbd>`;
+  }
+
+  // =========================================================
+  // Tonalité, gamme et accords
+  // =========================================================
+  const DEGRES_MAJ = [[0, "maj", "I"], [2, "min", "ii"], [4, "min", "iii"], [5, "maj", "IV"], [7, "maj", "V"], [9, "min", "vi"], [11, "dim", "vii°"], [7, "7", "V7"]];
+  const DEGRES_MIN = [[0, "min", "i"], [2, "dim", "ii°"], [3, "maj", "III"], [5, "min", "iv"], [7, "maj", "V"], [8, "maj", "VI"], [10, "maj", "VII"], [7, "7", "V7"]];
+  function gammeActuelle() {
+    const iv = reglages.majeur ? [0, 2, 4, 5, 7, 9, 11] : [0, 2, 3, 5, 7, 8, 10];
+    return iv.map(i => (reglages.tonalite + i) % 12);
+  }
+  function voicing(racine, q) {
+    let r = 55 + ((racine - 55 % 12) % 12 + 12) % 12;      // racine entre Sol3 et Fa♯4
+    if (r > 66) r -= 12;
+    const notes = QUALITES[q].iv.map(i => r + i);
+    const basse = 36 + racine;                               // basse entre Do2 et Si2
+    return { notes, basse };
+  }
+  let padActif = null;
+  function construirePad() {
+    const pad = document.createElement("div"); pad.className = "pad"; pad.setAttribute("role", "group"); pad.setAttribute("aria-label", "Accords de la tonalité");
+    const degres = reglages.majeur ? DEGRES_MAJ : DEGRES_MIN;
+    pad.innerHTML = degres.map(([d, q, chiffre], i) => {
+      const pc = (reglages.tonalite + d) % 12;
+      return `<button type="button" data-i="${i}" data-pc="${pc}" data-q="${q}"><b>${nomAccord(pc, q)}</b><small>${chiffre}</small></button>`;
+    }).join("") + `<button type="button" class="note" id="donner-note" aria-pressed="${bourdon ? "true" : "false"}"><b>${nomPc(reglages.tonalite)}</b><small>DONNER LA NOTE</small></button>`;
+    pad.addEventListener("pointerdown", e => {
+      const b = e.target.closest("button[data-pc]"); if (!b) return;
+      e.preventDefault();
+      jouerAccordPad(b, "p" + e.pointerId);
+    });
+    pad.querySelector("#donner-note").addEventListener("click", basculerBourdon);
+    scene.appendChild(pad);
+  }
+  const finPad = e => { if (padActif && padActif.id === "p" + e.pointerId) finAccordPad(); };
+  window.addEventListener("pointerup", finPad); window.addEventListener("pointercancel", finPad);
+  function jouerAccordPad(b, id) {
+    if (padActif) finAccordPad();
+    const pc = +b.dataset.pc, q = b.dataset.q;
+    const { notes, basse } = voicing(pc, q);
+    const toutes = [basse, ...notes];
+    toutes.forEach((m, i) => jouer(`a:${i}`, m + reglages.transpo, i === 0 ? 0.75 : 0.62));
+    padActif = { id, b, notes: toutes };
+    b.classList.add("actif");
+    marquerAccordPad();
+  }
+  function finAccordPad() {
+    if (!padActif) return;
+    padActif.notes.forEach((m, i) => lacher(`a:${i}`));
+    padActif.b.classList.remove("actif");
+    padActif = null; marquerAccordPad();
+  }
+  function marquerAccordPad() {
+    zones.forEach(z => z.touches.querySelectorAll(".accordee").forEach(x => x.classList.remove("accordee")));
+    if (!padActif) return;
+    zones.forEach(z => padActif.notes.forEach(m => { const el = toucheEl(z, m); if (el) el.classList.add("accordee"); }));
+  }
+  // « Donner la note » : la tonique et la quinte tenues en nappe, pour chanter juste
+  let bourdon = false;
+  function basculerBourdon() {
+    bourdon = !bourdon;
+    const b = document.getElementById("donner-note"); if (b) b.setAttribute("aria-pressed", bourdon ? "true" : "false");
+    const t = reglages.tonalite + reglages.transpo;
+    if (bourdon) { jouer("d:1", 48 + t, 0.6, { son: "nappe", demo: true }); jouer("d:2", 55 + t, 0.5, { son: "nappe", demo: true }); jouer("d:3", 60 + t, 0.45, { son: "nappe", demo: true }); }
+    else ["d:1", "d:2", "d:3"].forEach(c => lacher(c, { demo: true, force: true }));
+  }
+
+  // =========================================================
+  // Rythmes
+  // =========================================================
+  const STYLES = {
+    metronome: { nom: "Métronome", temps: 4, parTemps: 1, pistes: { clicFort: "X...", clic: ".xxx" } },
+    louange: { nom: "Louange 4/4", temps: 4, parTemps: 4, pistes: { kick: "x.....x.x.......", snare: "....x.......x...", hat: "x.x.x.x.x.x.x.x.", clap: "....x.......x..." } },
+    adoration: { nom: "Adoration (lent)", temps: 4, parTemps: 4, pistes: { kick: "x.........x.....", rim: "....x.......x...", hat: "x...x...x...x...", shaker: "..x...x...x...x." } },
+    gospel: { nom: "Gospel 12/8", temps: 4, parTemps: 3, pistes: { kick: "x.....x..x..", snare: "...x.....x..", hat: "x.xx.xx.xx.x" } },
+    afro: { nom: "Afro-louange 12/8", temps: 4, parTemps: 3, pistes: { kick: "x.....x.....", cloche: "x.x.xx.x.x.x", congaB: "..x.....x...", congaH: ".....x.....x", shaker: "xxxxxxxxxxxx" } },
+    makossa: { nom: "Makossa", temps: 4, parTemps: 4, pistes: { kick: "x...x...x...x...", snare: "....x.......x...", hat: "..x...x...x...x.", congaH: "x..x..x...x.x...", shaker: "xxxxxxxxxxxxxxxx" } },
+    sixhuit: { nom: "Lent 6/8", temps: 2, parTemps: 3, pistes: { kick: "x.....", snare: "...x..", hat: "xxxxxx" } },
+    aucun: { nom: "Sans rythme", temps: 4, parTemps: 1, pistes: {} }
+  };
+  // =========================================================
+  // Vraie batterie enregistrée (VCSL, domaine public CC0)
+  // =========================================================
+  const BATTERIE = {
+    kick: ["kick"], snare: ["snare1", "snare2"], rim: ["rim"], hat: ["hat1", "hat2"], hatOuvert: ["hatOuvert"],
+    tomH: ["tomH"], tomB: ["tomB"], crash: ["crash"], congaB: ["congaB"], congaH: ["congaH"],
+    shaker: ["shaker1", "shaker2"], cloche: ["cloche"], clap: ["clap1", "clap2"], clave: ["clave"], tamb: ["tamb"]
+  };
+  // Tous les fichiers sont normalisés au même niveau : on dose ici chaque instrument dans le mélange
+  const NIVEAUX = { kick: 0.95, snare: 0.62, rim: 0.42, hat: 0.26, hatOuvert: 0.22, tomH: 0.55, tomB: 0.6, crash: 0.38,
+    congaB: 0.55, congaH: 0.48, shaker: 0.2, cloche: 0.3, clap: 0.42, clave: 0.38, tamb: 0.3 };
+  const tamponsBatterie = new Map();
+  const alternance = {};
+  let chargementBatterie = null;
+  function chargerBatterie() {
+    if (chargementBatterie || !contexte()) return chargementBatterie;
+    const noms = [...new Set(Object.values(BATTERIE).flat())];
+    chargementBatterie = Promise.all(noms.map(n =>
+      fetch("sons/batterie/" + n + ".mp3")
+        .then(rep => { if (!rep.ok) throw new Error(rep.status); return rep.arrayBuffer(); })
+        .then(decoder)
+        .then(buf => tamponsBatterie.set(n, buf))
+        .catch(() => {})
+    ));
+    return chargementBatterie;
+  }
+  function frappe(type, t, fort) {
+    const noms = BATTERIE[type];
+    if (noms && tamponsBatterie.size) {
+      const i = alternance[type] = ((alternance[type] || 0) + 1) % noms.length;   // deux prises en alternance, plus naturel
+      const buf = tamponsBatterie.get(noms[i]);
+      if (buf) {
+        const src = ctx.createBufferSource(), g = ctx.createGain();
+        src.buffer = buf;
+        g.gain.value = (NIVEAUX[type] || 0.5) * (fort ? 1 : 0.82) * (0.92 + Math.random() * 0.16);
+        src.connect(g); g.connect(batterie); src.start(t);
+        return;
+      }
+    }
+    frappeSynth(type, t, fort);
+  }
+  function frappeSynth(type, t, fort) {
+    const g = ctx.createGain(); g.connect(batterie);
+    const v = fort ? 1 : 0.8;
+    const bruitSrc = (duree) => { const b = ctx.createBufferSource(); b.buffer = bruit(); b.start(t); stop(b, t + duree); return b; };
+    if (type === "kick") {
+      const o = ctx.createOscillator(); o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(42, t + 0.14);
+      g.gain.setValueAtTime(1.1 * v, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.38);
+      o.connect(g); o.start(t); stop(o, t + 0.4);
+    } else if (type === "snare" || type === "clap" || type === "rim") {
+      const n = bruitSrc(0.25), f = ctx.createBiquadFilter();
+      f.type = type === "snare" ? "highpass" : "bandpass"; f.frequency.value = type === "snare" ? 1800 : type === "rim" ? 2600 : 1400; f.Q.value = type === "rim" ? 6 : 1;
+      n.connect(f); f.connect(g);
+      const niveau = type === "snare" ? 0.55 : type === "rim" ? 0.35 : 0.4;
+      if (type === "clap") {
+        [0, 0.012, 0.024].forEach(d => { g.gain.setValueAtTime(niveau * v, t + d); g.gain.exponentialRampToValueAtTime(0.02, t + d + 0.011); });
+        g.gain.setValueAtTime(niveau * v * 0.8, t + 0.036); g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+      } else {
+        g.gain.setValueAtTime(niveau * v, t); g.gain.exponentialRampToValueAtTime(0.001, t + (type === "rim" ? 0.05 : 0.18));
+      }
+      if (type === "snare") { const o = ctx.createOscillator(); o.type = "triangle"; o.frequency.value = 190; const go = ctx.createGain(); go.gain.setValueAtTime(0.35 * v, t); go.gain.exponentialRampToValueAtTime(0.001, t + 0.1); o.connect(go); go.connect(batterie); o.start(t); stop(o, t + 0.12); }
+    } else if (type === "hat" || type === "shaker") {
+      const n = bruitSrc(0.1), f = ctx.createBiquadFilter(); f.type = "highpass"; f.frequency.value = type === "hat" ? 7500 : 5000;
+      n.connect(f); f.connect(g);
+      const niveau = type === "hat" ? 0.22 : 0.09;
+      g.gain.setValueAtTime(niveau * v, t); g.gain.exponentialRampToValueAtTime(0.001, t + (type === "hat" ? 0.05 : 0.07));
+    } else if (type === "cloche") {
+      const f = ctx.createBiquadFilter(); f.type = "bandpass"; f.frequency.value = 800; f.Q.value = 2; f.connect(g);
+      [540, 800].forEach(fr => { const o = ctx.createOscillator(); o.type = "square"; o.frequency.value = fr; o.connect(f); o.start(t); stop(o, t + 0.25); });
+      g.gain.setValueAtTime(0.16 * v, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+    } else if (type === "congaB" || type === "congaH") {
+      const o = ctx.createOscillator(), fr = type === "congaB" ? 190 : 300;
+      o.frequency.setValueAtTime(fr * 1.25, t); o.frequency.exponentialRampToValueAtTime(fr, t + 0.03);
+      g.gain.setValueAtTime(0.5 * v, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+      o.connect(g); o.start(t); stop(o, t + 0.3);
+    } else if (type === "tomH" || type === "tomB") {
+      const o = ctx.createOscillator(), fr = type === "tomH" ? 200 : 130;
+      o.frequency.setValueAtTime(fr * 1.4, t); o.frequency.exponentialRampToValueAtTime(fr, t + 0.08);
+      g.gain.setValueAtTime(0.6 * v, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+      o.connect(g); o.start(t); stop(o, t + 0.32);
+    } else if (type === "crash") {
+      const b = ctx.createBufferSource(), f = ctx.createBiquadFilter();
+      b.buffer = bruit(); b.loop = true; f.type = "highpass"; f.frequency.value = 5000;
+      b.connect(f); f.connect(g);
+      g.gain.setValueAtTime(0.35, t); g.gain.exponentialRampToValueAtTime(0.001, t + 1.8);
+      b.start(t); stop(b, t + 1.9);
+    } else if (type === "clic" || type === "clicFort") {
+      const o = ctx.createOscillator(); o.frequency.value = type === "clicFort" ? 2000 : 1400;
+      g.gain.setValueAtTime(type === "clicFort" ? 0.5 : 0.32, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+      o.connect(g); o.start(t); stop(o, t + 0.05);
+    }
+  }
+  let rythme = { actif: false, pas: 0, prochain: 0, minuterie: null };
+  function style() { return STYLES[reglages.style] || STYLES.louange; }
+  function planifier() {
+    const s = style(), nbPas = s.temps * s.parTemps, duree = 60 / reglages.bpm / s.parTemps;
+    while (rythme.prochain < ctx.currentTime + 0.12) {
+      const p = rythme.pas, t = rythme.prochain, debutTemps = p % s.parTemps === 0;
+      Object.entries(s.pistes).forEach(([piste, motif]) => {
+        const c = motif[p % motif.length];
+        if (c === "x" || c === "X") frappe(piste, t, c === "X" || (p === 0 && piste === "kick"));
+      });
+      if (debutTemps) { const temps = p / s.parTemps; setTimeout(() => { allumerBattement(temps); surTemps(); }, Math.max(0, (t - ctx.currentTime) * 1000)); }
+      rythme.pas = (p + 1) % nbPas; rythme.prochain += duree;
+    }
+  }
+  function lancerRythme() {
+    if (!audio()) return;
+    if (arr.actif) arreterArr(false);
+    rythme.actif = true; rythme.pas = 0; rythme.prochain = ctx.currentTime + 0.06;
+    planifier(); rythme.minuterie = setInterval(planifier, 25);
+    majRythmeUI();
+  }
+  function arreterRythme() {
+    rythme.actif = false; clearInterval(rythme.minuterie); rythme.minuterie = null;
+    allumerBattement(-1); majRythmeUI();
+  }
+  function dessinerBattements() {
+    document.getElementById("battements").innerHTML = Array.from({ length: style().temps }, (_, i) => `<i class="${i === 0 ? "un" : ""}"></i>`).join("");
+  }
+  function allumerBattement(i) {
+    document.querySelectorAll("#battements i").forEach((b, j) => b.classList.toggle("on", j === i && rythme.actif));
+  }
+  function majRythmeUI() {
+    const b = document.getElementById("rythme-lancer");
+    b.setAttribute("aria-pressed", rythme.actif ? "true" : "false");
+    b.firstChild.textContent = rythme.actif ? "■ " : "▶ ";
+    document.getElementById("rythme-nom-court").textContent = style().nom;
+    ["bpm-aff", "bpm-aff-2"].forEach(id => document.getElementById(id).textContent = reglages.bpm + " bpm");
+    const champ = document.getElementById("bpm-saisie"); if (champ && document.activeElement !== champ) champ.value = reglages.bpm;
+    document.querySelectorAll("#styles button").forEach(x => x.setAttribute("aria-pressed", x.dataset.style === reglages.style ? "true" : "false"));
+    dessinerBattements();
+  }
+  const BPM_MIN = 20, BPM_MAX = 1000;
+  function changerBpm(d) { reglages.bpm = Math.max(BPM_MIN, Math.min(BPM_MAX, reglages.bpm + d)); sauver(); majRythmeUI(); syncChant(); }
+  let taps = [];
+  function taper() {
+    const now = performance.now();
+    taps = taps.filter(t => now - t < 2500); taps.push(now);
+    if (taps.length >= 3) {
+      const ecarts = taps.slice(1).map((t, i) => t - taps[i]);
+      const moyen = ecarts.reduce((a, b) => a + b, 0) / ecarts.length;
+      reglages.bpm = Math.max(BPM_MIN, Math.min(BPM_MAX, Math.round(60000 / moyen))); sauver(); majRythmeUI(); syncChant();
+    }
+    if (audio()) frappe("clic", ctx.currentTime, false);
+  }
+
+  // =========================================================
+  // Mélodies guidées
+  // =========================================================
+  function genererExercices() {
+    const t = reglages.tonalite, base = 60 + t - (t > 6 ? 12 : 0);
+    const suite = iv => iv.map(i => ({ m: base + i, d: 1 }));
+    const aller = g => g.concat(g.slice(0, -1).reverse());
+    const ton = nomPc(t);
+    return [
+      { nom: `Gamme de ${ton} majeur`, tempo: 90, suite: suite(aller([0, 2, 4, 5, 7, 9, 11, 12])) },
+      { nom: `Gamme de ${ton} mineur`, tempo: 90, suite: suite(aller([0, 2, 3, 5, 7, 8, 10, 12])) },
+      { nom: "Arpèges I – IV – V – I", tempo: 110, suite: suite([0, 4, 7, 12, 5, 9, 12, 17, 7, 11, 14, 19, 0, 4, 7, 12]) },
+      { nom: "Tierces", tempo: 100, suite: suite([0, 4, 2, 5, 4, 7, 5, 9, 7, 11, 9, 12, 11, 14, 12, 16]) },
+      { nom: "Sauts d'octave", tempo: 80, suite: suite([0, 12, 2, 14, 4, 16, 5, 17, 7, 19, 5, 17, 4, 16, 2, 14, 0, 12]) }
+    ];
+  }
+  let MELODIES = genererExercices();
+  let choisie = 0, modeMelodie = "repos", position = 0, minuteurs = [];
+  const bandeau = document.getElementById("bandeau");
+  const portrait = '<span class="portrait">Tourne ton téléphone en mode paysage pour avoir plus de touches.</span>';
+
+  function dessinerBandeau(info, bravo) {
+    if (modeMelodie === "repos" && !info) { bandeau.innerHTML = portrait; return; }
+    const s = MELODIES[choisie];
+    bandeau.innerHTML = portrait + s.suite.map((n, i) => `<span class="puce ${i < position ? "faite" : i === position && modeMelodie !== "repos" ? "courante" : ""}">${nomDe(n.m, false)}</span>`).join("") +
+      (info ? `<span class="info${bravo ? " bravo" : ""}">${info}</span>` : "");
+  }
+  function zoneMelodie() { return zones.find(z => z.id === "haut" || z.id === "piano" || z.id === "accords" || z.id === "compo" || z.id === "arr"); }
+  function montrerPlage(notes) {
+    const z = zoneMelodie(); if (!z) return;
+    const bas = Math.min(...notes), haut = Math.max(...notes);
+    if (bas >= z.bas && haut <= z.haut) return;
+    z.debut = blanchePlusProche(bas); if (NOIRE[bas % 12]) z.debut = Math.max(0, z.debut);
+    reglages.debuts[z.id] = BLANCHES[z.debut]; dessinerZone(z);
+  }
+  function marquerSuivante() {
+    zones.forEach(z => z.touches.querySelectorAll(".suivante").forEach(x => x.classList.remove("suivante")));
+    if (modeMelodie !== "jeu") return;
+    const n = MELODIES[choisie].suite[position]; if (!n) return;
+    const z = zoneMelodie(); if (z) { const el = toucheEl(z, n.m); if (el) el.classList.add("suivante"); }
+  }
+  function verifierMelodie(m) {
+    if (modeMelodie !== "jeu") return;
+    const s = MELODIES[choisie], att = s.suite[position]; if (!att) return;
+    if (m === att.m) {
+      position++;
+      if (position >= s.suite.length) { modeMelodie = "repos"; position = s.suite.length; marquerSuivante(); dessinerBandeau("Bravo ! Mélodie terminée.", true); majBoutonsMelodie(); return; }
+      dessinerBandeau(`${position} / ${s.suite.length}`);
+    } else {
+      const z = zoneMelodie(), el = z && toucheEl(z, m);
+      if (el) { el.classList.remove("fausse"); void el.offsetWidth; el.classList.add("fausse"); }
+      dessinerBandeau(`cherche ${nomDe(att.m, true)}`);
+    }
+    marquerSuivante();
+  }
+  function arreterMelodie() {
+    minuteurs.forEach(clearTimeout); minuteurs = [];
+    MELODIES[choisie].suite.forEach((n, i) => lacher("m:" + i, { demo: true, force: true }));
+    modeMelodie = "repos"; position = 0; marquerSuivante(); dessinerBandeau(); majBoutonsMelodie();
+  }
+  function majBoutonsMelodie() {
+    document.getElementById("jouer").setAttribute("aria-pressed", modeMelodie === "jeu" ? "true" : "false");
+    document.querySelectorAll("#melodies button").forEach(b => b.setAttribute("aria-pressed", +b.dataset.i === choisie ? "true" : "false"));
+  }
+  function ecouterMelodie() {
+    arreterMelodie(); if (!audio()) return; fermerMenu();
+    const s = MELODIES[choisie], temps = 60000 / s.tempo;
+    montrerPlage(s.suite.map(n => n.m)); modeMelodie = "ecoute";
+    let t = 250;
+    s.suite.forEach((n, i) => {
+      const d = n.d * temps;
+      minuteurs.push(setTimeout(() => { position = i; dessinerBandeau("Écoute…"); const z = zoneMelodie(); if (z) marquer(z, n.m, true); jouer("m:" + i, sortieDe(n.m), 0.72, { demo: true }); }, t));
+      minuteurs.push(setTimeout(() => { const z = zoneMelodie(); if (z) marquer(z, n.m, false); lacher("m:" + i, { demo: true, force: true }); }, t + d * 0.9));
+      t += d;
+    });
+    minuteurs.push(setTimeout(() => { modeMelodie = "repos"; position = 0; dessinerBandeau("À toi de jouer : ouvre le menu et touche Jouer."); }, t + 200));
+  }
+  function jouerMelodie() {
+    arreterMelodie(); fermerMenu();
+    const s = MELODIES[choisie];
+    montrerPlage(s.suite.map(n => n.m)); modeMelodie = "jeu"; position = 0;
+    dessinerBandeau(`commence par ${nomDe(s.suite[0].m, true)}`); marquerSuivante(); majBoutonsMelodie();
+  }
+
+  // =========================================================
+  // Enregistreur
+  // =========================================================
+  const CLE_ENREG = "piano-ivoire:enregistrement:v2";
+  let enregistrement = null, dernier = null, lecture = [];
+  try { dernier = JSON.parse(localStorage.getItem(CLE_ENREG) || "null"); } catch (e) {}
+  function resumeEnreg() {
+    const el = document.getElementById("etat-enreg");
+    const rej = document.getElementById("rejouer"), eff = document.getElementById("effacer");
+    if (enregistrement) { el.textContent = "Enregistrement en cours… ferme le menu et joue."; rej.disabled = eff.disabled = true; return; }
+    if (!dernier || !dernier.evts.length) { el.textContent = "Aucun enregistrement."; rej.disabled = eff.disabled = true; return; }
+    const notes = dernier.evts.filter(x => x.on).length;
+    el.textContent = `${notes} note${notes > 1 ? "s" : ""} · ${(dernier.duree / 1000).toFixed(1).replace(".", ",")} s`;
+    rej.disabled = eff.disabled = false;
+  }
+  function basculerEnregistrement() {
+    if (!enregistrement) {
+      arreterLecture(); enregistrement = { t0: performance.now(), evts: [] };
+      document.getElementById("voyant").classList.add("actif"); document.getElementById("txt-enreg").textContent = "Terminer";
+      fermerMenu();
+    } else {
+      dernier = { evts: enregistrement.evts, duree: performance.now() - enregistrement.t0 }; enregistrement = null;
+      try { localStorage.setItem(CLE_ENREG, JSON.stringify(dernier)); } catch (e) {}
+      document.getElementById("voyant").classList.remove("actif"); document.getElementById("txt-enreg").textContent = "Enregistrer";
+    }
+    resumeEnreg();
+  }
+  function arreterLecture() {
+    lecture.forEach(clearTimeout); lecture = [];
+    [...voix.keys()].filter(c => c.startsWith("r:")).forEach(c => lacher(c, { demo: true, force: true }));
+    document.getElementById("rejouer").textContent = "Réécouter";
+  }
+  function rejouer() {
+    if (lecture.length) { arreterLecture(); return; }
+    if (!dernier || !audio()) return;
+    document.getElementById("rejouer").textContent = "Arrêter";
+    const son = {};
+    dernier.evts.forEach(x => {
+      lecture.push(setTimeout(() => {
+        if (x.on) { son[x.cle] = true; jouer("r:" + x.cle, x.m, x.f || 0.75, { demo: true }); }
+        else lacher("r:" + x.cle, { demo: true, force: true });
+      }, x.t));
+    });
+    lecture.push(setTimeout(() => { lecture = []; document.getElementById("rejouer").textContent = "Réécouter"; }, dernier.duree + 400));
+  }
+
+  // =========================================================
+  // Composer : mes chants (grille d'accords, paroles, mélodie)
+  // =========================================================
+  const CLE_CHANTS = "piano-ivoire:chants";
+  const EXTRAS = [[10, "maj", "♭VII"], [2, "maj", "II"], [4, "maj", "III"], [0, "7", "I7"], [5, "min", "iv"], [0, "sus4", "Isus4"]];
+  const SUGGESTIONS_MAJ = [
+    { nom: "Louange I–V–vi–IV", a: [[0, "maj"], [7, "maj"], [9, "min"], [5, "maj"]] },
+    { nom: "Cantique I–IV–V–I", a: [[0, "maj"], [5, "maj"], [7, "maj"], [0, "maj"]] },
+    { nom: "Adoration vi–IV–I–V", a: [[9, "min"], [5, "maj"], [0, "maj"], [7, "maj"]] },
+    { nom: "Gospel I–vi–ii–V", a: [[0, "maj"], [9, "min"], [2, "min"], [7, "maj"]] },
+    { nom: "Fin ii–V7–I", a: [[2, "min"], [7, "7"], [0, "maj"], [0, "maj"]] },
+    { nom: "Afro I–IV–I–V", a: [[0, "maj"], [5, "maj"], [0, "maj"], [7, "maj"]] }
+  ];
+  const SUGGESTIONS_MIN = [
+    { nom: "i–iv–V–i", a: [[0, "min"], [5, "min"], [7, "maj"], [0, "min"]] },
+    { nom: "i–VI–III–VII", a: [[0, "min"], [8, "maj"], [3, "maj"], [10, "maj"]] },
+    { nom: "i–VII–VI–V", a: [[0, "min"], [10, "maj"], [8, "maj"], [7, "maj"]] }
+  ];
+  const nouvelId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const echapper = t => String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  function chantVide(titre) {
+    return { id: nouvelId(), titre, tonalite: reglages.tonalite, majeur: reglages.majeur, bpm: reglages.bpm, style: reglages.style,
+      sections: [{ nom: "Couplet", mesures: [] }, { nom: "Refrain", mesures: [] }], melodie: null };
+  }
+  function chantExemple() {
+    const c = chantVide("Exemple : louange en Sol");
+    Object.assign(c, { tonalite: 7, majeur: true, bpm: 76, style: "adoration" });
+    const m = l => l.map(([d, q]) => ({ d, q, p: "" }));
+    c.sections[0].mesures = m([[0, "maj"], [7, "maj"], [9, "min"], [5, "maj"], [0, "maj"], [7, "maj"], [5, "maj"], [5, "maj"]]);
+    c.sections[1].mesures = m([[5, "maj"], [0, "maj"], [7, "maj"], [9, "min"], [5, "maj"], [0, "maj"], [7, "7"], [0, "maj"]]);
+    c.sections[1].mesures[0].p = "Écris tes paroles ici";
+    return c;
+  }
+  let chants = [];
+  try { chants = JSON.parse(localStorage.getItem(CLE_CHANTS) || "[]") || []; } catch (e) { chants = []; }
+  if (!Array.isArray(chants) || !chants.length) chants = [chantExemple()];
+  let chantId = chants.some(c => c.id === reglages.chantId) ? reglages.chantId : chants[0].id;
+  const chant = () => chants.find(c => c.id === chantId) || chants[0];
+  let attenteChants;
+  function sauverChants() {
+    clearTimeout(attenteChants);
+    attenteChants = setTimeout(() => { try { localStorage.setItem(CLE_CHANTS, JSON.stringify(chants)); } catch (e) {} }, 250);
+  }
+  let selection = null;   // { s: partie, m: mesure (-1 = ajouter à la fin) }
+  let compo = null;
+
+  // Les réglages suivent le chant ouvert…
+  function appliquerChant() {
+    const c = chant();
+    reglages.tonalite = c.tonalite; reglages.majeur = c.majeur; reglages.bpm = c.bpm;
+    reglages.style = STYLES[c.style] ? c.style : "adoration"; reglages.chantId = c.id; sauver();
+    remplirTonalites(); majRythmeUI(); remplirExercices();
+    document.querySelectorAll("[data-maj]").forEach(x => x.setAttribute("aria-pressed", (x.dataset.maj === "1") === reglages.majeur ? "true" : "false"));
+  }
+  // … et le chant suit les réglages quand on les change
+  function syncChant() {
+    if (reglages.mode !== "composer") return;
+    const c = chant();
+    c.tonalite = reglages.tonalite; c.majeur = reglages.majeur; c.bpm = reglages.bpm; c.style = reglages.style;
+    sauverChants(); if (compo) dessinerComposeur();
+  }
+  const degresDe = maj => maj ? DEGRES_MAJ : DEGRES_MIN;
+  function romain(d, q) {
+    const x = degresDe(chant().majeur).concat(EXTRAS).find(([dd, qq]) => dd === d && qq === q);
+    return x ? x[2] : "";
+  }
+  const nomMesure = x => nomAccord((chant().tonalite + x.d) % 12, x.q);
+
+  function construireComposeur() {
+    const p = document.createElement("section");
+    p.className = "compo"; p.setAttribute("aria-label", "Composer un chant");
+    p.innerHTML = `
+      <div class="c-tete">
+        <button type="button" class="bt plein" id="c-jouer">▶ Écouter</button>
+        <button type="button" class="bt" id="c-enreg">● Enregistrer ma mélodie</button>
+        <button type="button" class="bt" id="c-boucle" aria-pressed="${lecteur.boucle ? "true" : "false"}">Boucle</button>
+        <select class="bt" id="c-liste" aria-label="Choisir un chant"></select>
+        <button type="button" class="bt" id="c-nouveau">＋ Nouveau</button>
+        <input class="bt c-titre" id="c-titre" aria-label="Titre du chant" maxlength="60">
+        <select class="bt" id="c-ton" aria-label="Tonalité du chant"></select>
+        <span class="seg" role="group" aria-label="Mode du chant"><button type="button" id="c-maj" data-cmaj="1">Majeur</button><button type="button" id="c-min" data-cmaj="0">Mineur</button></span>
+        <select class="bt" id="c-style" aria-label="Rythme du chant"></select>
+        <button type="button" class="bt" id="c-supprimer-chant">Supprimer le chant</button>
+      </div>
+      <div class="c-grille" id="c-grille"></div>
+      <div class="c-edition" id="c-edition"></div>
+      <div class="c-palette" id="c-palette" role="group" aria-label="Accords à placer"></div>
+      <div class="c-transport"><span class="c-prompteur" id="c-prompteur" aria-live="polite"></span></div>`;
+    scene.appendChild(p);
+    compo = p;
+    const q = sel => p.querySelector(sel);
+
+    q("#c-liste").addEventListener("change", e => { arreterLecteur(); chantId = e.target.value; selection = null; appliquerChant(); dessinerZones(); dessinerComposeur(); });
+    q("#c-nouveau").addEventListener("click", () => {
+      arreterLecteur();
+      const c = chantVide("Nouveau chant " + (chants.length + 1));
+      chants.unshift(c); chantId = c.id; selection = { s: 0, m: -1 };
+      sauverChants(); appliquerChant(); dessinerComposeur(); q("#c-titre").select();
+    });
+    q("#c-supprimer-chant").addEventListener("click", e => {
+      const b = e.currentTarget;
+      if (b.dataset.confirmer !== "1") { b.dataset.confirmer = "1"; b.textContent = "Confirmer la suppression"; setTimeout(() => { b.dataset.confirmer = ""; b.textContent = "Supprimer le chant"; }, 3000); return; }
+      arreterLecteur();
+      chants = chants.filter(c => c.id !== chantId);
+      if (!chants.length) chants = [chantVide("Nouveau chant")];
+      chantId = chants[0].id; selection = null; sauverChants(); appliquerChant(); dessinerComposeur();
+    });
+    q("#c-titre").addEventListener("input", e => { chant().titre = e.target.value || "Sans titre"; sauverChants(); remplirListe(); });
+    q("#c-ton").addEventListener("change", e => { if (bourdon) basculerBourdon(); reglages.tonalite = +e.target.value; sauver(); remplirTonalites(); dessinerZones(); remplirExercices(); syncChant(); });
+    p.querySelectorAll("[data-cmaj]").forEach(b => b.addEventListener("click", () => {
+      reglages.majeur = b.dataset.cmaj === "1"; sauver(); dessinerZones();
+      document.querySelectorAll("[data-maj]").forEach(x => x.setAttribute("aria-pressed", (x.dataset.maj === "1") === reglages.majeur ? "true" : "false"));
+      syncChant();
+    }));
+    q("#c-style").addEventListener("change", e => { reglages.style = e.target.value; sauver(); majRythmeUI(); syncChant(); });
+    q("#c-jouer").addEventListener("click", () => (lecteur.actif ? arreterLecteur() : lancerLecteur(false)));
+    q("#c-enreg").addEventListener("click", () => (lecteur.actif && lecteur.enregistre ? arreterLecteur() : lancerLecteur(true)));
+    q("#c-boucle").addEventListener("click", e => { lecteur.boucle = !lecteur.boucle; e.currentTarget.setAttribute("aria-pressed", lecteur.boucle ? "true" : "false"); });
+
+    // Grille : choisir une mesure, ajouter une partie, renommer
+    q("#c-grille").addEventListener("click", e => {
+      const b = e.target.closest("[data-m]");
+      if (b) {
+        selection = { s: +b.dataset.s, m: +b.dataset.m };
+        if (selection.m >= 0) { const x = chant().sections[selection.s].mesures[selection.m]; apercu(x.d, x.q); setTimeout(finApercu, 650); }
+        dessinerComposeur(); return;
+      }
+      const pt = e.target.closest("[data-partie]");
+      if (pt) {
+        chant().sections.push({ nom: pt.dataset.partie, mesures: [] });
+        selection = { s: chant().sections.length - 1, m: -1 }; sauverChants(); dessinerComposeur();
+      }
+    });
+    q("#c-grille").addEventListener("input", e => {
+      const i = e.target.closest(".c-nom"); if (!i) return;
+      chant().sections[+i.dataset.s].nom = i.value || "Partie"; sauverChants();
+    });
+
+    // Édition de la mesure choisie
+    q("#c-edition").addEventListener("input", e => {
+      if (e.target.id !== "c-paroles" || !selection || selection.m < 0) return;
+      const sec = chant().sections[selection.s]; if (!sec || !sec.mesures[selection.m]) return;
+      sec.mesures[selection.m].p = e.target.value; sauverChants();
+      const chip = q(`.c-mesure[data-s="${selection.s}"][data-m="${selection.m}"]`);
+      if (chip) { let em = chip.querySelector("em"); if (!em) { em = document.createElement("em"); chip.appendChild(em); } em.textContent = e.target.value; }
+    });
+    q("#c-edition").addEventListener("click", e => {
+      const id = e.target.id, c = chant();
+      if (!selection) return;
+      const sec = c.sections[selection.s]; if (!sec) return;
+      if (id === "c-dupliquer" && selection.m >= 0) { sec.mesures.splice(selection.m + 1, 0, { ...sec.mesures[selection.m] }); selection.m++; }
+      else if (id === "c-suppr" && selection.m >= 0) { sec.mesures.splice(selection.m, 1); selection.m = Math.min(selection.m, sec.mesures.length - 1); if (selection.m < 0) selection.m = -1; }
+      else if (id === "c-suppr-partie") { c.sections.splice(selection.s, 1); selection = null; }
+      else if (id === "c-desel") { selection = null; }
+      else return;
+      sauverChants(); dessinerComposeur();
+    });
+
+    // Palette : on entend l'accord au toucher, il se place quand on relâche
+    q("#c-palette").addEventListener("pointerdown", e => { const b = e.target.closest("button[data-d]"); if (b) apercu(+b.dataset.d, b.dataset.q); });
+    q("#c-palette").addEventListener("click", e => {
+      const b = e.target.closest("button[data-d]"); if (b) { placer(+b.dataset.d, b.dataset.q); return; }
+      const sg = e.target.closest("button[data-sugg]"); if (sg) suggerer(+sg.dataset.sugg);
+    });
+    dessinerComposeur();
+  }
+  window.addEventListener("pointerup", () => finApercu());
+  window.addEventListener("pointercancel", () => finApercu());
+
+  function remplirListe() {
+    const sel = compo && compo.querySelector("#c-liste"); if (!sel) return;
+    sel.innerHTML = chants.map(c => `<option value="${c.id}"${c.id === chantId ? " selected" : ""}>${echapper(c.titre)}</option>`).join("");
+  }
+  function dessinerComposeur() {
+    if (!compo) return;
+    const c = chant(), q = sel => compo.querySelector(sel);
+    remplirListe();
+    if (document.activeElement !== q("#c-titre")) q("#c-titre").value = c.titre;
+    q("#c-ton").innerHTML = Array.from({ length: 12 }, (_, i) => `<option value="${i}"${i === c.tonalite ? " selected" : ""}>${nomPc(i)}</option>`).join("");
+    compo.querySelectorAll("[data-cmaj]").forEach(b => b.setAttribute("aria-pressed", (b.dataset.cmaj === "1") === c.majeur ? "true" : "false"));
+    q("#c-style").innerHTML = Object.entries(STYLES).map(([id, st]) => `<option value="${id}"${id === c.style ? " selected" : ""}>${st.nom}</option>`).join("");
+
+    let n = 0;
+    q("#c-grille").innerHTML = c.sections.map((sec, si) => `
+      <div class="c-section">
+        <input class="c-nom" data-s="${si}" value="${echapper(sec.nom)}" aria-label="Nom de la partie" maxlength="20">
+        ${sec.mesures.map((x, mi) => {
+          const choisie = selection && selection.s === si && selection.m === mi;
+          return `<button type="button" class="c-mesure${choisie ? " choisie" : ""}" data-s="${si}" data-m="${mi}" data-n="${n++}"><b>${nomMesure(x)}</b><small>${romain(x.d, x.q) || "&nbsp;"}</small>${x.p ? `<em>${echapper(x.p)}</em>` : ""}</button>`;
+        }).join("")}
+        <button type="button" class="c-ajout${selection && selection.s === si && selection.m === -1 ? " choisie" : ""}" data-s="${si}" data-m="-1" aria-label="Ajouter des accords à ${echapper(sec.nom)}">＋</button>
+      </div>`).join("") +
+      `<div class="c-section"><button type="button" class="bt" data-partie="Intro">＋ Intro</button><button type="button" class="bt" data-partie="Couplet">＋ Couplet</button><button type="button" class="bt" data-partie="Refrain">＋ Refrain</button><button type="button" class="bt" data-partie="Pont">＋ Pont</button><button type="button" class="bt" data-partie="Final">＋ Final</button></div>`;
+
+    const ed = q("#c-edition");
+    const sec = selection && c.sections[selection.s];
+    if (sec && selection.m >= 0 && sec.mesures[selection.m]) {
+      const x = sec.mesures[selection.m];
+      ed.innerHTML = `<span class="c-lbl">${nomMesure(x)}</span>
+        <input class="bt c-paroles" id="c-paroles" placeholder="Paroles chantées sur cette mesure" value="${echapper(x.p || "")}" maxlength="80">
+        <button type="button" class="bt" id="c-dupliquer">Dupliquer</button><button type="button" class="bt" id="c-suppr">Supprimer</button><button type="button" class="bt" id="c-desel">Terminé</button>`;
+    } else if (sec && selection.m === -1) {
+      ed.innerHTML = `<span class="c-aide">Ajout dans <b>${echapper(sec.nom)}</b> : touche les accords ci-dessous dans l'ordre, ou une suggestion.</span>` +
+        (sec.mesures.length ? "" : `<button type="button" class="bt" id="c-suppr-partie">Supprimer cette partie</button>`) + `<button type="button" class="bt" id="c-desel">Terminé</button>`;
+    } else {
+      ed.innerHTML = `<span class="c-aide">Touche <b>＋</b> dans une partie, puis les accords ci-dessous. Touche une mesure pour la changer ou écrire ses paroles.</span>`;
+    }
+
+    const base = degresDe(c.majeur);
+    const liste = base.concat(EXTRAS.filter(([d, qq]) => !base.some(([dd, q2]) => dd === d && q2 === qq)));
+    const sug = c.majeur ? SUGGESTIONS_MAJ : SUGGESTIONS_MIN;
+    q("#c-palette").innerHTML = liste.map(([d, qq, rm]) => `<button type="button" data-d="${d}" data-q="${qq}"><b>${nomAccord((c.tonalite + d) % 12, qq)}</b><small>${rm}</small></button>`).join("") +
+      `<span class="c-sep"></span>` + sug.map((sg, i) => `<button type="button" class="c-sugg" data-sugg="${i}">${sg.nom}</button>`).join("");
+    majTransport();
+  }
+  function cibleAjout() {
+    const c = chant();
+    if (!selection || !c.sections[selection.s]) selection = { s: Math.max(0, c.sections.length - 1), m: -1 };
+    if (!c.sections.length) { c.sections.push({ nom: "Couplet", mesures: [] }); selection = { s: 0, m: -1 }; }
+    return c.sections[selection.s];
+  }
+  function placer(d, q) {
+    const sec = cibleAjout();
+    if (selection.m >= 0 && sec.mesures[selection.m]) Object.assign(sec.mesures[selection.m], { d, q });
+    else sec.mesures.push({ d, q, p: "" });
+    sauverChants(); dessinerComposeur();
+  }
+  function suggerer(i) {
+    const sg = (chant().majeur ? SUGGESTIONS_MAJ : SUGGESTIONS_MIN)[i]; if (!sg) return;
+    const sec = cibleAjout();
+    sg.a.forEach(([d, q]) => sec.mesures.push({ d, q, p: "" }));
+    selection.m = -1; sauverChants(); dessinerComposeur();
+  }
+  // Entendre un accord de la palette
+  let apercuActif = false;
+  function apercu(d, q) {
+    if (!audio()) return;
+    finApercu();
+    const { notes, basse } = voicing((chant().tonalite + d) % 12, q);
+    [basse, ...notes].forEach((m, i) => jouer("ap:" + i, m + reglages.transpo, i ? 0.55 : 0.65, { demo: true }));
+    apercuActif = true;
+  }
+  function finApercu() {
+    if (!apercuActif) return;
+    apercuActif = false;
+    [...voix.keys()].filter(k => k.startsWith("ap:")).forEach(k => lacher(k, { demo: true, force: true }));
+  }
+
+  // ---------- Lecture de la grille, avec le rythme ----------
+  const lecteur = { actif: false, enregistre: false, boucle: false, liste: [], i: -1, temps: 0, decompte: 0, debutPerf: 0, evts: [], minuteurs: [] };
+  function listeMesures() {
+    const r = [];
+    chant().sections.forEach((sec, si) => sec.mesures.forEach((x, mi) => r.push({ si, mi, x, nom: sec.nom })));
+    return r;
+  }
+  function lancerLecteur(enregistrer) {
+    if (!audio()) return;
+    const liste = listeMesures();
+    if (!liste.length) { majPrompteur("Ajoute d'abord des accords à ton chant."); return; }
+    if (modeMelodie !== "repos") arreterMelodie();
+    if (rythme.actif) arreterRythme();
+    Object.assign(lecteur, { actif: true, enregistre: enregistrer, liste, i: -1, temps: 0, decompte: enregistrer ? style().temps : 0, debutPerf: 0, evts: [] });
+    lecteur.minuteurs.forEach(clearTimeout); lecteur.minuteurs = [];
+    majPrompteur(enregistrer ? "Prépare-toi…" : "");
+    lancerRythme(); majTransport();
+  }
+  function arreterLecteur() {
+    if (!lecteur.actif) return;
+    const etaitEnreg = lecteur.enregistre;
+    lecteur.actif = false;
+    lecteur.minuteurs.forEach(clearTimeout); lecteur.minuteurs = [];
+    [...voix.keys()].filter(k => k.startsWith("acc:") || k.startsWith("mel:")).forEach(k => lacher(k, { demo: true, force: true }));
+    const z = zones.find(x => x.id === "compo"); if (z) z.touches.querySelectorAll(".appuyee").forEach(el => el.classList.remove("appuyee"));
+    arreterRythme();
+    if (etaitEnreg) {
+      const notes = lecteur.evts.filter(e => e.on).length;
+      if (notes) { chant().melodie = { evts: lecteur.evts }; sauverChants(); majPrompteur(`Mélodie enregistrée : ${notes} note${notes > 1 ? "s" : ""}. Touche Écouter.`); }
+      else majPrompteur("Aucune note jouée : rien n'a été enregistré.");
+    } else majPrompteur("");
+    lecteur.enregistre = false;
+    marquerMesure(-1); majTransport();
+  }
+  // Appelé à chaque temps, au moment où il sonne
+  function surTemps() {
+    if (!lecteur.actif) return;
+    const st = style();
+    if (lecteur.decompte > 0) { majPrompteur("Prépare-toi… " + lecteur.decompte); lecteur.decompte--; return; }
+    const dansMesure = lecteur.temps % st.temps;
+    if (dansMesure === 0) {
+      lecteur.i++;
+      if (lecteur.i >= lecteur.liste.length) {
+        if (lecteur.boucle && !lecteur.enregistre) lecteur.i = 0;
+        else { arreterLecteur(); return; }
+      }
+      if (lecteur.i === 0) { lecteur.debutPerf = performance.now(); if (!lecteur.enregistre) programmerMelodie(); }
+      jouerAccordLecteur(lecteur.liste[lecteur.i].x);
+      marquerMesure(lecteur.i);
+    } else if (!TENU[reglages.son] && st.temps >= 4 && dansMesure === st.temps / 2) {
+      jouerAccordLecteur(lecteur.liste[lecteur.i].x);    // un piano s'éteint : on refrappe à la moitié de la mesure
+    }
+    lecteur.temps++;
+  }
+  function jouerAccordLecteur(x) {
+    [...voix.keys()].filter(k => k.startsWith("acc:")).forEach(k => lacher(k, { demo: true, force: true }));
+    const { notes, basse } = voicing((chant().tonalite + x.d) % 12, x.q);
+    jouer("acc:b", basse + reglages.transpo, 0.6, { demo: true });
+    notes.forEach((m, i) => jouer("acc:" + i, m + reglages.transpo, lecteur.enregistre ? 0.42 : 0.5, { demo: true }));
+  }
+  function programmerMelodie() {
+    const mel = chant().melodie; if (!mel || !mel.evts) return;
+    const temps = 60000 / reglages.bpm;
+    const z = () => zones.find(x => x.id === "compo");
+    mel.evts.forEach(e => {
+      lecteur.minuteurs.push(setTimeout(() => {
+        if (!lecteur.actif) return;
+        const zz = z();
+        if (e.on) { jouer("mel:" + e.m, sortieDe(e.m), e.f || 0.75, { demo: true }); if (zz) marquer(zz, e.m, true); }
+        else { lacher("mel:" + e.m, { demo: true, force: true }); if (zz) marquer(zz, e.m, false); }
+      }, e.t * temps));
+    });
+  }
+  function marquerMesure(i) {
+    if (!compo) return;
+    compo.querySelectorAll(".c-mesure.joue").forEach(b => b.classList.remove("joue"));
+    if (i < 0) return;
+    const b = compo.querySelector(`.c-mesure[data-n="${i}"]`);
+    if (b) { b.classList.add("joue"); try { b.scrollIntoView({ block: "nearest", inline: "nearest" }); } catch (e) {} }
+    const x = lecteur.liste[i], suivante = lecteur.liste[i + 1];
+    const ligne = x.x.p ? x.x.p : nomMesure(x.x);
+    majPrompteur(ligne + (suivante && suivante.x.p ? "   ›   " + suivante.x.p : ""));
+  }
+  function majPrompteur(t) { const el = compo && compo.querySelector("#c-prompteur"); if (el) el.textContent = t; }
+  function majTransport() {
+    if (!compo) return;
+    compo.classList.toggle("lecture", lecteur.actif);
+    const j = compo.querySelector("#c-jouer"), en = compo.querySelector("#c-enreg");
+    j.textContent = lecteur.actif && !lecteur.enregistre ? "■ Arrêter" : "▶ Écouter";
+    j.disabled = lecteur.actif && lecteur.enregistre;
+    en.textContent = lecteur.actif && lecteur.enregistre ? "■ Terminer l'enregistrement" : chant().melodie ? "● Réenregistrer la mélodie" : "● Enregistrer ma mélodie";
+    en.disabled = lecteur.actif && !lecteur.enregistre;
+  }
+
+  // ---------- Sauvegarde dans un fichier ----------
+  document.getElementById("chants-exporter").addEventListener("click", () => {
+    try {
+      const blob = new Blob([JSON.stringify({ application: "piano-ivoire", version: 1, chants }, null, 1)], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob); a.download = "mes-chants-piano-ivoire.json";
+      document.body.appendChild(a); a.click(); a.remove();
+      document.getElementById("chants-etat").textContent = `${chants.length} chant${chants.length > 1 ? "s" : ""} sauvegardé${chants.length > 1 ? "s" : ""} dans « mes-chants-piano-ivoire.json » (dossier Téléchargements).`;
+    } catch (e) { document.getElementById("chants-etat").textContent = "La sauvegarde n'a pas fonctionné sur cet appareil."; }
+  });
+  document.getElementById("chants-importer").addEventListener("change", e => {
+    const f = e.target.files && e.target.files[0]; if (!f) return;
+    const lecteurFichier = new FileReader();
+    lecteurFichier.onload = () => {
+      try {
+        const d = JSON.parse(lecteurFichier.result);
+        const recus = Array.isArray(d) ? d : d.chants;
+        if (!Array.isArray(recus)) throw new Error("format");
+        let n = 0;
+        recus.forEach(c => { if (!c || !Array.isArray(c.sections)) return; const copie = { ...c, id: chants.some(x => x.id === c.id) ? nouvelId() : c.id || nouvelId() }; chants.push(copie); n++; });
+        sauverChants(); dessinerComposeur();
+        document.getElementById("chants-etat").textContent = `${n} chant${n > 1 ? "s" : ""} importé${n > 1 ? "s" : ""}. Ouvre le mode Composer pour les voir.`;
+      } catch (err) { document.getElementById("chants-etat").textContent = "Ce fichier n'est pas une sauvegarde de Piano Ivoire."; }
+      e.target.value = "";
+    };
+    lecteurFichier.readAsText(f);
+  });
+
+  // =========================================================
+  // Mode Arrangeur : la main gauche donne l'accord, l'orchestre suit
+  // =========================================================
+  // Motifs : un caractère par pas.  Basse : R fondamentale, 5 quinte, 8 octave, 3 tierce, . silence.
+  // Accompagnement : X accord tenu, x accord court, a arpège (une note à la fois).
+  const ARR = {
+    louange: { nom: "Louange pop", bpm: 96, temps: 4, parTemps: 4,
+      A: { batterie: { kick: "x.....x.x.......", snare: "....x.......x...", hat: "x.x.x.x.x.x.x.x." }, basse: "R.....R.R...5...",
+           couches: [{ son: "concert", motif: "X.......X.......", force: 0.55 }] },
+      B: { batterie: { kick: "x.....x.x.....x.", snare: "....x.......x...", hat: "xxxxxxxxxxxxxx..", hatOuvert: "..............x.", clap: "....x.......x..." }, basse: "R..R..R.R..R5.8.",
+           couches: [{ son: "concert", motif: "X..x..X...x.X...", force: 0.6 }, { son: "nappe", motif: "X...............", force: 0.45 }] } },
+    adoration: { nom: "Adoration (ballade)", bpm: 68, temps: 4, parTemps: 4,
+      A: { batterie: { kick: "x.........x.....", rim: "....x.......x...", shaker: "..x...x...x...x." }, basse: "R.......5.......",
+           couches: [{ son: "concert", motif: "a.a.a.a.a.a.a.a.", force: 0.45 }, { son: "nappe", motif: "X...............", force: 0.4 }] },
+      B: { batterie: { kick: "x.....x...x.....", snare: "....x.......x...", hat: "x.x.x.x.x.x.x.x." }, basse: "R.....R.5.....8.",
+           couches: [{ son: "concert", motif: "X.......X...x...", force: 0.55 }, { son: "nappe", motif: "X...............", force: 0.5 }] } },
+    gospel: { nom: "Gospel 12/8", bpm: 64, temps: 4, parTemps: 3,
+      A: { batterie: { kick: "x.....x..x..", snare: "...x.....x..", hat: "x.xx.xx.xx.x" }, basse: "R.....5..R..",
+           couches: [{ son: "concert", motif: "X..x.xX..x.x", force: 0.55 }] },
+      B: { batterie: { kick: "x..x..x..x..", snare: "...x.....x..", hat: "xxxxxxxxxxxx", clap: "...x.....x..", tamb: "...x.....x.." }, basse: "R..R..5..8..",
+           couches: [{ son: "concert", motif: "X.xx.xX.xx.x", force: 0.6 }, { son: "orgue", motif: "X...........", force: 0.35 }] } },
+    afro: { nom: "Afro-louange 12/8", bpm: 108, temps: 4, parTemps: 3,
+      A: { batterie: { kick: "x.....x.....", cloche: "x.x.xx.x.x.x", congaB: "..x.....x...", shaker: "xxxxxxxxxxxx" }, basse: "R..R..5..R..",
+           couches: [{ son: "guitare", motif: "x.xx.xx.xx.x", force: 0.5 }] },
+      B: { batterie: { kick: "x..x..x..x..", cloche: "x.x.xx.x.x.x", congaB: "..x..x..x..x", congaH: ".x..x..x..x.", snare: "...x.....x.." }, basse: "R.RR..5.58..",
+           couches: [{ son: "guitare", motif: "x.xx.xx.xx.x", force: 0.55 }, { son: "concert", motif: "X.....X.....", force: 0.45 }] } },
+    makossa: { nom: "Makossa", bpm: 118, temps: 4, parTemps: 4,
+      A: { batterie: { kick: "x...x...x...x...", snare: "....x.......x...", hat: "..x...x...x...x.", congaH: "x..x..x...x.x..." }, basse: "R.R.5.R.R.R.5.8.",
+           couches: [{ son: "guitare", motif: "x.x.x.x.x.x.x.x.", force: 0.45 }] },
+      B: { batterie: { kick: "x...x...x...x...", snare: "....x..x....x...", hat: "x.x.x.x.x.x.x.x.", congaH: "x..x..x...x.x...", shaker: "xxxxxxxxxxxxxxxx" }, basse: "R.RR5.R.R.RR5.8.",
+           couches: [{ son: "guitare", motif: "xxx.x.xxx.x.x.x.", force: 0.5 }, { son: "concert", motif: "X.......X.......", force: 0.4 }] } },
+    rumba: { nom: "Rumba congolaise", bpm: 120, temps: 4, parTemps: 4,
+      A: { batterie: { kick: "x..x....x..x....", clave: "x..x..x...x.x...", shaker: "xxxxxxxxxxxxxxxx" }, basse: "R..5..R.R..5..8.",
+           couches: [{ son: "guitare", motif: "a.aa.a.aa.aa.a.a", force: 0.45 }] },
+      B: { batterie: { kick: "x..x....x..x....", snare: "....x.......x...", clave: "x..x..x...x.x...", hat: "x.x.x.x.x.x.x.x.", congaH: "..x...x...x...x." }, basse: "R.R5..R.R.R5..8.",
+           couches: [{ son: "guitare", motif: "a.aa.a.aa.aa.a.a", force: 0.5 }, { son: "guitare", motif: "x...x...x...x...", force: 0.35 }] } },
+    zouk: { nom: "Zouk", bpm: 90, temps: 4, parTemps: 4,
+      A: { batterie: { kick: "x...x...x...x...", rim: "..x..x....x..x..", hat: "x.x.x.x.x.x.x.x." }, basse: "R..R..R.R..R..5.",
+           couches: [{ son: "concert", motif: "X.......X.......", force: 0.45 }, { son: "nappe", motif: "X...............", force: 0.35 }] },
+      B: { batterie: { kick: "x...x...x...x...", snare: "...x..x....x..x.", hat: "xxxxxxxxxxxxxxxx" }, basse: "R..R..R.R..R..58",
+           couches: [{ son: "concert", motif: "x..x..x.x..x..x.", force: 0.5 }, { son: "nappe", motif: "X...............", force: 0.4 }] } },
+    sixhuit: { nom: "Lent 6/8", bpm: 58, temps: 2, parTemps: 3,
+      A: { batterie: { kick: "x.....", rim: "...x..", shaker: "xxxxxx" }, basse: "R..5..",
+           couches: [{ son: "concert", motif: "aaaaaa", force: 0.45 }] },
+      B: { batterie: { kick: "x.....", snare: "...x..", hat: "xxxxxx" }, basse: "R..5..",
+           couches: [{ son: "concert", motif: "aaaaaa", force: 0.5 }, { son: "nappe", motif: "X.....", force: 0.4 }] } }
+  };
+
+  const arr = { actif: false, section: "A", depart: "A", suivante: null, apresBreak: "A", mesureIntro: 0, finJouee: false,
+    remplir: false, pas: 0, prochain: 0, minuterie: null, accord: null, arp: 0, couches: {}, coups: 0 };
+  const gauche = new Set();       // notes tenues à la main gauche
+  let accGain = null;
+  function sortieAccomp() {
+    if (!accGain) { accGain = ctx.createGain(); accGain.gain.value = reglages.volAccomp / 100; accGain.connect(maitre); }
+    return accGain;
+  }
+  const arrStyle = () => ARR[reglages.arrStyle] || ARR.louange;
+
+  // ---------- Reconnaître l'accord de la main gauche ----------
+  function lireAccord(notes) {
+    if (!notes.length) return null;
+    const tri = [...notes].sort((a, b) => a - b);
+    if (reglages.doigte === "un") {
+      // Doigté « un doigt » des claviers arrangeurs :
+      // la note la plus haute donne l'accord ; une noire à sa gauche = mineur ; une blanche = 7e ; les deux = m7
+      const haut = tri[tri.length - 1], autres = tri.filter(n => n < haut);
+      const noire = autres.some(n => NOIRE[n % 12]), blanche = autres.some(n => !NOIRE[n % 12]);
+      return { pc: haut % 12, q: noire && blanche ? "m7" : noire ? "min" : blanche ? "7" : "maj" };
+    }
+    const a = analyser(tri);
+    if (a) return a;
+    if (tri.length === 1) return { pc: tri[0] % 12, q: "maj" };
+    const iv = (tri[1] - tri[0]) % 12;
+    return { pc: tri[0] % 12, q: iv === 3 ? "min" : "maj" };
+  }
+  function gaucheAppui(m) {
+    gauche.add(m);
+    const a = lireAccord([...gauche]); if (!a) return;
+    const change = !arr.accord || arr.accord.pc !== a.pc || arr.accord.q !== a.q;
+    arr.accord = a;
+    afficherAccordArr();
+    if (!arr.actif && reglages.arrSync) demarrerArr();
+    else if (arr.actif && change) relancerAccord();
+  }
+  function gaucheLacher(m) { gauche.delete(m); }   // l'accord reste en mémoire, comme sur un arrangeur
+  function afficherAccordArr() {
+    const a = arr.accord, txt = a ? nomAccord(a.pc, a.q) : "—";
+    const el = document.getElementById("a-accord"); if (el) el.textContent = txt;
+    document.getElementById("accord").textContent = a ? txt : "";
+  }
+
+  // ---------- Instruments de l'orchestre (programmés à l'heure exacte) ----------
+  function noteOrchestre(t, m, force, duree, son) {
+    const g = ctx.createGain(), srcs = [], f0 = frequence(m);
+    g.connect(sortieAccomp());
+    g.gain.setValueAtTime(0, t);
+    if (son === "concert" && tampons.size) {
+      const s = echantillonProche(m), src = ctx.createBufferSource(), lp = ctx.createBiquadFilter();
+      src.buffer = tampons.get(s); src.playbackRate.value = Math.pow(2, (m - s) / 12);
+      lp.type = "lowpass"; lp.frequency.value = 900 + 15000 * force * force;
+      src.connect(lp); lp.connect(g);
+      g.gain.setValueAtTime(0.12 + 0.95 * Math.pow(force, 1.6), t);
+      g.gain.setTargetAtTime(0, t + duree, 0.12);
+      src.start(t); stop(src, t + duree + 1); srcs.push(src);
+    } else if (son === "basse") {
+      const o = ctx.createOscillator(), sub = ctx.createOscillator(), lp = ctx.createBiquadFilter();
+      o.type = "triangle"; o.frequency.value = f0; sub.type = "sine"; sub.frequency.value = f0;
+      lp.type = "lowpass"; lp.frequency.value = 650; lp.Q.value = 0.8;
+      o.connect(lp); sub.connect(lp); lp.connect(g);
+      const pic = 0.75 * force;
+      g.gain.linearRampToValueAtTime(pic, t + 0.006);
+      g.gain.setTargetAtTime(pic * 0.55, t + 0.01, 0.18);
+      g.gain.setTargetAtTime(0, t + duree, 0.04);
+      [o, sub].forEach(x => { x.start(t); stop(x, t + duree + 0.4); srcs.push(x); });
+    } else if (son === "guitare") {
+      const o = ctx.createOscillator(), lp = ctx.createBiquadFilter();
+      o.type = "sawtooth"; o.frequency.value = f0;
+      lp.type = "lowpass"; lp.frequency.setValueAtTime(2600 + 2400 * force, t); lp.frequency.exponentialRampToValueAtTime(500, t + 0.22);
+      o.connect(lp); lp.connect(g);
+      g.gain.linearRampToValueAtTime(0.2 * force, t + 0.004);
+      g.gain.setTargetAtTime(0, t + 0.01, Math.min(0.28, Math.max(0.08, duree / 2)));
+      o.start(t); stop(o, t + duree + 0.6); srcs.push(o);
+    } else if (son === "orgue") {
+      [[1, 0.5], [2, 0.3], [4, 0.15]].forEach(([r, a]) => { const o = ctx.createOscillator(), og = ctx.createGain(); o.type = "sine"; o.frequency.value = f0 * r; og.gain.value = a; o.connect(og); og.connect(g); o.start(t); stop(o, t + duree + 0.3); srcs.push(o); });
+      g.gain.linearRampToValueAtTime(0.28 * force, t + 0.03);
+      g.gain.setTargetAtTime(0, t + duree, 0.05);
+    } else {
+      // nappe (et piano si les enregistrements ne sont pas encore chargés)
+      const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = son === "nappe" ? 1600 : 4000; lp.connect(g);
+      (son === "nappe" ? [-8, 0, 8] : [0]).forEach(c => { const o = ctx.createOscillator(); o.type = son === "nappe" ? "sawtooth" : "triangle"; o.frequency.value = f0 * Math.pow(2, c / 1200); o.connect(lp); o.start(t); stop(o, t + duree + 1.2); srcs.push(o); });
+      if (son === "nappe") { g.gain.linearRampToValueAtTime(0.13 * force, t + 0.35); g.gain.setTargetAtTime(0, t + duree, 0.35); }
+      else { g.gain.linearRampToValueAtTime(0.35 * force, t + 0.005); g.gain.setTargetAtTime(0, t + 0.01, 0.6); }
+    }
+    arr.coups++;
+    return { g, srcs };
+  }
+  function couperCouche(cle, t) {
+    (arr.couches[cle] || []).forEach(n => {
+      try { n.g.gain.cancelScheduledValues(t); n.g.gain.setTargetAtTime(0, t, 0.03); } catch (e) {}
+      n.srcs.forEach(s => stop(s, t + 0.25));
+    });
+    arr.couches[cle] = [];
+  }
+  function accordCourant() { return arr.accord || { pc: reglages.tonalite, q: reglages.majeur ? "maj" : "min" }; }
+  function notesBasse(c) {
+    const a = accordCourant(), racine = 36 + a.pc, iv = QUALITES[a.q].iv;
+    return { R: racine, "5": racine + (iv[2] || 7), "8": racine + 12, "3": racine + iv[1] }[c];
+  }
+  // Nombre de pas jusqu'au prochain coup du motif (pour savoir combien de temps tenir la note)
+  function jusquAuProchain(motif, p, n) {
+    for (let k = 1; k <= n; k++) if (motif[(p + k) % motif.length] !== ".") return k;
+    return n;
+  }
+
+  // ---------- Remplissage de batterie (fill) ----------
+  function fill(st, p, n) {
+    const moitie = Math.floor(n / 2), rel = p - moitie;
+    const r = {};
+    if (p < moitie) return null;
+    r.snare = true;
+    if (st.parTemps === 4 ? rel % 4 === 1 : rel % 3 === 1) r.tomH = true;
+    if (st.parTemps === 4 ? rel % 4 === 3 : rel % 3 === 2) r.tomB = true;
+    if (p === moitie) r.kick = true;
+    return r;
+  }
+
+  // ---------- Un pas de l'orchestre ----------
+  function pasArrangeur(p, t) {
+    const st = arrStyle(), n = st.temps * st.parTemps, dPas = 60 / reglages.bpm / st.parTemps;
+    if (p === 0) {
+      if (arr.section === "fin" && arr.finJouee) { finale(t); return false; }
+      if (arr.section === "intro") { arr.mesureIntro++; if (arr.mesureIntro > 2) arr.section = "A"; }
+      if (arr.section === "break") arr.section = arr.apresBreak;
+      if (arr.suivante) {
+        if (arr.suivante === "break") { arr.apresBreak = arr.section === "B" ? "B" : "A"; }
+        arr.section = arr.suivante; arr.suivante = null; arr.remplir = false; arr.finJouee = false;
+      }
+      if (arr.section === "fin") arr.finJouee = true;
+      setTimeout(majSectionsArr, Math.max(0, (t - ctx.currentTime) * 1000));
+    }
+    const v = arr.section === "B" || (arr.section === "break" && arr.apresBreak === "B") ? st.B : st.A;
+    const intro1 = arr.section === "intro" && arr.mesureIntro === 1;
+    const avecFill = arr.section === "break" || (arr.remplir && p >= n / 2) || (arr.section === "intro" && arr.mesureIntro === 2 && p >= n / 2);
+
+    // Batterie
+    const f = avecFill ? (arr.section === "break" && p < n / 2 ? {} : fill(st, p, n)) : null;
+    if (f) {
+      if (f.kick) frappe("kick", t, true);
+      if (f.snare) frappe("snare", t, false);
+      if (f.tomH) frappe("tomH", t, false);
+      if (f.tomB) frappe("tomB", t, false);
+      if (arr.section === "break" && p < n / 2 && p % st.parTemps === 0) frappe("hat", t, false);
+    } else {
+      Object.entries(v.batterie).forEach(([piste, motif]) => {
+        if (intro1 && (piste === "kick" || piste === "snare" || piste === "clap")) return;
+        const c = motif[p % motif.length];
+        if (c === "x" || c === "X") frappe(piste, t, p === 0 && piste === "kick");
+      });
+    }
+    if (arr.section === "break") return true;
+
+    // Basse
+    if (!intro1) {
+      const c = v.basse[p % v.basse.length];
+      if (c !== ".") {
+        couperCouche("basse", t);
+        const duree = jusquAuProchain(v.basse, p, n) * dPas * 0.92;
+        arr.couches.basse = [noteOrchestre(t, notesBasse(c), 0.85, duree, "basse")];
+      }
+    }
+    // Accords (piano, guitare, nappe, orgue)
+    const a = accordCourant(), { notes } = voicing(a.pc, a.q);
+    v.couches.forEach((couche, i) => {
+      const c = couche.motif[p % couche.motif.length]; if (c === ".") return;
+      const cle = "c" + i;
+      const duree = (c === "x" ? Math.min(1.5, jusquAuProchain(couche.motif, p, n)) : jusquAuProchain(couche.motif, p, n)) * dPas * 0.95;
+      couperCouche(cle, t);
+      if (c === "a") {
+        const arp = [...notes, notes[0] + 12, ...notes.slice(1).reverse()];
+        const m = arp[arr.arp++ % arp.length];
+        arr.couches[cle] = [noteOrchestre(t, m, couche.force, Math.max(duree, dPas * 2), couche.son)];
+      } else {
+        arr.couches[cle] = notes.map(m => noteOrchestre(t, m, couche.force * (c === "x" ? 0.85 : 1), duree, couche.son));
+      }
+    });
+    return true;
+  }
+  // Un changement d'accord relance tout de suite la basse et les accords tenus
+  function relancerAccord() {
+    if (!arr.actif || arr.section === "break") return;
+    const st = arrStyle(), t = ctx.currentTime + 0.01, dPas = 60 / reglages.bpm / st.parTemps;
+    const v = arr.section === "B" ? st.B : st.A, a = accordCourant(), { notes } = voicing(a.pc, a.q);
+    const n = st.temps * st.parTemps, p = (arr.pas + n - 1) % n;
+    couperCouche("basse", t);
+    arr.couches.basse = [noteOrchestre(t, notesBasse("R"), 0.8, jusquAuProchain(v.basse, p, n) * dPas, "basse")];
+    v.couches.forEach((couche, i) => {
+      if (!couche.motif.includes("X")) return;          // les motifs rythmés reprennent au prochain coup
+      couperCouche("c" + i, t);
+      arr.couches["c" + i] = notes.map(m => noteOrchestre(t, m, couche.force, jusquAuProchain(couche.motif, p, n) * dPas, couche.son));
+    });
+  }
+  function finale(t) {
+    const a = accordCourant(), { notes, basse } = voicing(a.pc, a.q);
+    Object.keys(arr.couches).forEach(k => couperCouche(k, t));
+    frappe("kick", t, true); frappe("crash", t, true);
+    noteOrchestre(t, basse, 0.8, 2.5, "basse");
+    const son = arrStyle().A.couches[0].son;
+    [...notes, notes[0] + 12].forEach(m => noteOrchestre(t, m, 0.6, 2.6, son === "guitare" ? "concert" : son));
+    setTimeout(() => arreterArr(true), Math.max(0, (t - ctx.currentTime) * 1000) + 50);
+  }
+  function planifierArr() {
+    const st = arrStyle(), n = st.temps * st.parTemps, dPas = 60 / reglages.bpm / st.parTemps;
+    while (arr.actif && arr.prochain < ctx.currentTime + 0.12) {
+      const p = arr.pas, t = arr.prochain;
+      if (p % st.parTemps === 0) { const temps = p / st.parTemps; setTimeout(() => allumerBattement(temps), Math.max(0, (t - ctx.currentTime) * 1000)); }
+      if (!pasArrangeur(p, t)) break;
+      const panneau = document.querySelector(".arr"); if (panneau) panneau.dataset.coups = arr.coups;
+      arr.pas = (p + 1) % n; arr.prochain += dPas;
+    }
+  }
+  function demarrerArr() {
+    if (!audio()) return;
+    if (rythme.actif) arreterRythme();
+    if (lecteur.actif) arreterLecteur();
+    Object.assign(arr, { actif: true, pas: 0, prochain: ctx.currentTime + 0.06, section: arr.depart === "intro" ? "intro" : arr.depart, mesureIntro: 0, suivante: null, remplir: false, finJouee: false, arp: 0 });
+    rythme.actif = true;              // pour allumer les battements
+    planifierArr(); arr.minuterie = setInterval(planifierArr, 25);
+    majSectionsArr();
+  }
+  function arreterArr(laisserSonner) {
+    if (!arr.actif && !arr.minuterie) return;
+    arr.actif = false; clearInterval(arr.minuterie); arr.minuterie = null;
+    if (!laisserSonner) Object.keys(arr.couches).forEach(k => couperCouche(k, ctx.currentTime));
+    rythme.actif = false; allumerBattement(-1);
+    if (arr.depart === "fin") arr.depart = "A";
+    majSectionsArr();
+  }
+  function demanderSection(sec) {
+    if (!arr.actif) {
+      if (sec === "fin" || sec === "break") return;
+      arr.depart = sec; majSectionsArr(); return;
+    }
+    if (sec === "intro") return;
+    arr.suivante = sec;
+    arr.remplir = sec !== "break";      // petit roulement de batterie avant de changer
+    majSectionsArr();
+  }
+  function majSectionsArr() {
+    const p = document.getElementById("a-start");
+    if (p) { p.textContent = arr.actif ? "■ Arrêter" : "▶ Démarrer"; p.setAttribute("aria-pressed", arr.actif ? "true" : "false"); }
+    document.querySelectorAll("[data-sec]").forEach(b => {
+      const s = b.dataset.sec;
+      const courant = arr.actif ? arr.section === s : arr.depart === s;
+      b.setAttribute("aria-pressed", courant ? "true" : "false");
+      b.classList.toggle("attente", arr.actif && arr.suivante === s);
+    });
+    majRythmeUI();
+  }
+
+  // ---------- Panneau ----------
+  function construireArrangeur() {
+    const p = document.createElement("section");
+    p.className = "arr"; p.setAttribute("aria-label", "Arrangeur");
+    p.innerHTML = `
+      <div class="a-ligne">
+        <button type="button" class="bt plein" id="a-start" aria-pressed="false">▶ Démarrer</button>
+        <button type="button" class="bt" id="a-sync" aria-pressed="${reglages.arrSync}">Sync</button>
+        <span class="seg a-sections" role="group" aria-label="Partie du morceau">
+          <button type="button" id="a-intro" data-sec="intro">Intro</button><button type="button" id="a-a" data-sec="A">A</button><button type="button" id="a-b" data-sec="B">B</button><button type="button" id="a-break" data-sec="break">Break</button><button type="button" id="a-fin" data-sec="fin">Fin</button>
+        </span>
+        <select class="bt" id="a-style" aria-label="Style d'accompagnement">${Object.entries(ARR).map(([id, s]) => `<option value="${id}"${id === reglages.arrStyle ? " selected" : ""}>${s.nom}</option>`).join("")}</select>
+        <span class="a-accord" id="a-accord" aria-live="polite">—</span>
+      </div>
+      <div class="a-ligne">
+        <span class="seg" role="group" aria-label="Doigté des accords"><button type="button" id="a-complet" data-doigte="complet">Accord complet</button><button type="button" id="a-un" data-doigte="un">Un doigt</button></span>
+        <select class="bt" id="a-son" aria-label="Son de la main droite">${SONS.map(s => `<option value="${s.id}"${s.id === reglages.son ? " selected" : ""}>Main droite : ${s.nom}</option>`).join("")}</select>
+        <button type="button" class="bt" id="a-couche" aria-pressed="${reglages.couche}">+ Nappe</button>
+        <span class="pas">Séparation <button type="button" class="bt carre" id="a-split-moins" aria-label="Déplacer la séparation vers le grave">−</button><output id="a-split">${nomDe(reglages.split, true)}</output><button type="button" class="bt carre" id="a-split-plus" aria-label="Déplacer la séparation vers l'aigu">+</button></span>
+        <label class="a-vol" for="a-vol">Orchestre <input type="range" id="a-vol" min="0" max="100" value="${reglages.volAccomp}"></label>
+      </div>`;
+    scene.appendChild(p);
+    const q = s => p.querySelector(s);
+    q("#a-start").addEventListener("click", () => arr.actif ? (arr.section === "fin" ? arreterArr(false) : demanderSection("fin")) : demarrerArr());
+    q("#a-start").addEventListener("dblclick", () => arreterArr(false));
+    q("#a-sync").addEventListener("click", e => { reglages.arrSync = !reglages.arrSync; sauver(); e.currentTarget.setAttribute("aria-pressed", reglages.arrSync ? "true" : "false"); });
+    p.querySelectorAll("[data-sec]").forEach(b => b.addEventListener("click", () => demanderSection(b.dataset.sec)));
+    q("#a-style").addEventListener("change", e => { reglages.arrStyle = e.target.value; reglages.bpm = arrStyle().bpm; sauver(); if (arr.actif) { arr.pas = 0; } majRythmeUI(); });
+    p.querySelectorAll("[data-doigte]").forEach(b => { b.setAttribute("aria-pressed", b.dataset.doigte === reglages.doigte ? "true" : "false"); b.addEventListener("click", () => { reglages.doigte = b.dataset.doigte; sauver(); p.querySelectorAll("[data-doigte]").forEach(x => x.setAttribute("aria-pressed", x === b ? "true" : "false")); }); });
+    q("#a-son").addEventListener("change", e => { reglages.son = e.target.value; sauver(); majSons(); });
+    q("#a-couche").addEventListener("click", e => { reglages.couche = !reglages.couche; sauver(); e.currentTarget.setAttribute("aria-pressed", reglages.couche ? "true" : "false"); });
+    const split = d => { reglages.split = Math.max(36, Math.min(84, reglages.split + d)); sauver(); q("#a-split").textContent = nomDe(reglages.split, true); dessinerZones(); };
+    q("#a-split-moins").addEventListener("click", () => split(-1));
+    q("#a-split-plus").addEventListener("click", () => split(1));
+    q("#a-vol").addEventListener("input", e => { reglages.volAccomp = +e.target.value; sauver(); if (accGain) accGain.gain.setTargetAtTime(reglages.volAccomp / 100, ctx.currentTime, 0.02); });
+    afficherAccordArr(); majSectionsArr();
+  }
+
+  // =========================================================
+  // Clavier MIDI (vraies touches)
+  // =========================================================
+  let acces = null;
+  const midiEtat = document.getElementById("midi-etat");
+  function afficherMidi(msg) { midiEtat.textContent = msg; }
+  function brancherEntrees() {
+    const noms = [];
+    acces.inputs.forEach(entree => { entree.onmidimessage = messageMidi; noms.push(entree.name || "Clavier MIDI"); });
+    afficherMidi(noms.length ? "Connecté : " + noms.join(", ") + "." : "Aucun clavier détecté. Vérifie le câble et l'adaptateur, puis touche Connecter.");
+    document.getElementById("midi-connecter").textContent = noms.length ? "Reconnecter" : "Connecter";
+  }
+  function messageMidi(e) {
+    const [statut, d1, d2] = e.data, type = statut & 0xf0;
+    if (reglages.mode === "arrangeur" && d1 < reglages.split && (type === 0x90 || type === 0x80)) {
+      const enfoncee = type === 0x90 && d2 > 0;
+      zones.forEach(z => marquer(z, d1, enfoncee));
+      if (enfoncee) gaucheAppui(d1); else gaucheLacher(d1);
+      return;
+    }
+    if (type === 0x90 && d2 > 0) {                       // touche enfoncée
+      const cle = "midi:" + d1;
+      zones.forEach(z => marquer(z, d1, true));
+      jouer(cle, sortieDe(d1), 0.15 + 0.85 * (d2 / 127));
+      verifierMelodie(d1);
+    } else if (type === 0x80 || (type === 0x90 && d2 === 0)) {   // touche relâchée
+      zones.forEach(z => marquer(z, d1, false));
+      lacher("midi:" + d1);
+    } else if (type === 0xb0 && d1 === 64) {             // pédale de sustain
+      reglerPedale(d2 >= 64);
+    }
+  }
+  function connecterMidi() {
+    if (!navigator.requestMIDIAccess) {
+      afficherMidi("Ce navigateur ne gère pas les claviers MIDI. Utilise Chrome ou Edge (sur Android ou sur ordinateur). Safari sur iPhone ne le permet pas.");
+      return;
+    }
+    afficherMidi("Connexion…");
+    navigator.requestMIDIAccess().then(a => {
+      acces = a; audio(); brancherEntrees();
+      acces.onstatechange = () => brancherEntrees();     // clavier branché ou débranché
+    }).catch(() => afficherMidi("Accès au clavier refusé. Autorise « appareils MIDI » pour ce site dans les réglages du navigateur, puis réessaie."));
+  }
+  document.getElementById("midi-connecter").addEventListener("click", connecterMidi);
+
+  // =========================================================
+  // Menu et commandes
+  // =========================================================
+  const menu = document.getElementById("menu"), voile = document.getElementById("voile");
+  function ouvrirMenu() { menu.hidden = false; voile.hidden = false; document.getElementById("ouvrir-menu").setAttribute("aria-expanded", "true"); document.getElementById("fermer-menu").focus(); }
+  function fermerMenu() { menu.hidden = true; voile.hidden = true; document.getElementById("ouvrir-menu").setAttribute("aria-expanded", "false"); }
+  document.getElementById("ouvrir-menu").addEventListener("click", ouvrirMenu);
+  document.getElementById("fermer-menu").addEventListener("click", fermerMenu);
+  voile.addEventListener("click", fermerMenu);
+  window.addEventListener("keydown", e => { if (e.key === "Escape" && !menu.hidden) fermerMenu(); });
+
+  function groupe(selecteur, cle, conv, apres) {
+    document.querySelectorAll(selecteur).forEach(b => {
+      const val = conv(b);
+      b.setAttribute("aria-pressed", val === reglages[cle] ? "true" : "false");
+      b.addEventListener("click", () => {
+        reglages[cle] = val; sauver();
+        document.querySelectorAll(selecteur).forEach(x => x.setAttribute("aria-pressed", conv(x) === val ? "true" : "false"));
+        if (apres) apres();
+      });
+    });
+  }
+  groupe("[data-mode]", "mode", b => b.dataset.mode, () => { finAccordPad(); arreterLecteur(); arreterArr(false); if (reglages.mode === "composer") appliquerChant(); construireScene(); });
+  groupe("[data-taille]", "taille", b => +b.dataset.taille, dessinerZones);
+  groupe("[data-nom]", "nom", b => b.dataset.nom, () => { dessinerZones(); if (reglages.mode === "accords") construireScene(); remplirTonalites(); dessinerBandeau(); });
+  groupe("[data-clavier]", "clavier", b => b.dataset.clavier, dessinerZones);
+  groupe("[data-maj]", "majeur", b => b.dataset.maj === "1", () => { dessinerZones(); if (reglages.mode === "accords") construireScene(); syncChant(); });
+
+  // Sons
+  const sonRapide = document.getElementById("son-rapide");
+  function majSons() {
+    sonRapide.innerHTML = SONS.map(s => `<option value="${s.id}"${s.id === reglages.son ? " selected" : ""}>${s.nom}</option>`).join("");
+    document.getElementById("sons").innerHTML = SONS.map(s => `<button type="button" class="bt" id="son-${s.id}" data-son="${s.id}" aria-pressed="${s.id === reglages.son}">${s.nom}</button>`).join("");
+    document.querySelectorAll("#sons button").forEach(b => b.addEventListener("click", () => { reglages.son = b.dataset.son; sauver(); majSons(); }));
+  }
+  sonRapide.addEventListener("change", () => { reglages.son = sonRapide.value; sauver(); majSons(); });
+
+  // Rythmes
+  document.getElementById("styles").innerHTML = Object.entries(STYLES).map(([id, s]) => `<button type="button" class="bt" id="style-${id}" data-style="${id}">${s.nom}</button>`).join("");
+  document.querySelectorAll("#styles button").forEach(b => b.addEventListener("click", () => { reglages.style = b.dataset.style; sauver(); if (rythme.actif) { rythme.pas = 0; } majRythmeUI(); syncChant(); }));
+  document.getElementById("rythme-lancer").addEventListener("click", () => arr.actif ? arreterArr(false) : rythme.actif ? (lecteur.actif ? arreterLecteur() : arreterRythme()) : lancerRythme());
+  function repetition(bouton, sens) {
+    let attenteRep, minuterieRep, n = 0;
+    const pas = () => { n++; changerBpm(sens * (n < 10 ? 1 : n < 25 ? 5 : 10)); };
+    const fin = () => { clearTimeout(attenteRep); clearInterval(minuterieRep); };
+    bouton.addEventListener("pointerdown", e => { e.preventDefault(); fin(); n = 0; pas(); attenteRep = setTimeout(() => { minuterieRep = setInterval(pas, 70); }, 400); });
+    ["pointerup", "pointerleave", "pointercancel"].forEach(ev => bouton.addEventListener(ev, fin));
+    bouton.addEventListener("click", e => { if (e.detail === 0) changerBpm(sens); });   // clavier : Entrée ou Espace
+  }
+  ["bpm-moins", "bpm-moins-2"].forEach(id => repetition(document.getElementById(id), -1));
+  ["bpm-plus", "bpm-plus-2"].forEach(id => repetition(document.getElementById(id), 1));
+  const saisieBpm = document.getElementById("bpm-saisie");
+  saisieBpm.addEventListener("change", () => {
+    const v = Math.round(+saisieBpm.value);
+    if (v >= BPM_MIN && v <= BPM_MAX) { reglages.bpm = v; sauver(); majRythmeUI(); syncChant(); }
+    else saisieBpm.value = reglages.bpm;
+  });
+  document.getElementById("tap").addEventListener("click", taper);
+  const volR = document.getElementById("vol-rythme"); volR.value = reglages.volRythme;
+  volR.addEventListener("input", () => { reglages.volRythme = +volR.value; sauver(); if (batterie) batterie.gain.setTargetAtTime(reglages.volRythme / 100, ctx.currentTime, 0.02); });
+
+  // Volume et réverbération
+  const vol = document.getElementById("volume"); vol.value = reglages.volume;
+  vol.addEventListener("input", () => { reglages.volume = +vol.value; sauver(); if (maitre) maitre.gain.setTargetAtTime(reglages.volume / 100, ctx.currentTime, 0.02); });
+  const rev = document.getElementById("reverb"); rev.value = reglages.reverb;
+  rev.addEventListener("input", () => { reglages.reverb = +rev.value; sauver(); if (reverbGain) reverbGain.gain.setTargetAtTime(reglages.reverb / 100 * 0.6, ctx.currentTime, 0.05); });
+
+  // Tonalité, gamme, transposition
+  const selTon = document.getElementById("tonalite");
+  function remplirTonalites() { selTon.innerHTML = Array.from({ length: 12 }, (_, i) => `<option value="${i}"${i === reglages.tonalite ? " selected" : ""}>${nomPc(i)}</option>`).join(""); }
+  selTon.addEventListener("change", () => {
+    if (bourdon) basculerBourdon();
+    reglages.tonalite = +selTon.value; sauver(); dessinerZones(); if (reglages.mode === "accords") construireScene();
+    remplirExercices(); syncChant();
+  });
+  const btGamme = document.getElementById("gamme");
+  const majGamme = () => { btGamme.setAttribute("aria-pressed", reglages.gamme ? "true" : "false"); btGamme.textContent = reglages.gamme ? "Oui" : "Non"; };
+  btGamme.addEventListener("click", () => { reglages.gamme = !reglages.gamme; sauver(); majGamme(); dessinerZones(); });
+  function majTranspo() { const t = reglages.transpo; document.getElementById("tr-aff").textContent = (t > 0 ? "+" : "") + t + (t ? ` (${nomPc(t)})` : ""); }
+  document.getElementById("tr-moins").addEventListener("click", () => { reglages.transpo = Math.max(-11, reglages.transpo - 1); sauver(); majTranspo(); });
+  document.getElementById("tr-plus").addEventListener("click", () => { reglages.transpo = Math.min(11, reglages.transpo + 1); sauver(); majTranspo(); });
+
+  // Pédale, plein écran
+  document.getElementById("pedale").addEventListener("click", () => reglerPedale(!pedale));
+  document.getElementById("plein-ecran").addEventListener("click", () => {
+    const d = document.documentElement;
+    try {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else if (d.requestFullscreen) d.requestFullscreen().then(() => { try { screen.orientation.lock("landscape").catch(() => {}); } catch (e) {} }).catch(() => {});
+    } catch (e) {}
+  });
+
+  // Exercices et enregistreur
+  function remplirExercices() {
+    if (modeMelodie !== "repos") arreterMelodie();
+    MELODIES = genererExercices(); if (choisie >= MELODIES.length) choisie = 0;
+    document.getElementById("melodies").innerHTML = MELODIES.map((s, i) => `<button type="button" class="bt" id="melodie-${i}" data-i="${i}" aria-pressed="${i === choisie}">${s.nom}</button>`).join("");
+  }
+  remplirExercices();
+  document.getElementById("melodies").addEventListener("click", e => { const b = e.target.closest("button[data-i]"); if (!b) return; arreterMelodie(); choisie = +b.dataset.i; majBoutonsMelodie(); });
+  document.getElementById("ecouter").addEventListener("click", ecouterMelodie);
+  document.getElementById("jouer").addEventListener("click", jouerMelodie);
+  document.getElementById("arreter-melodie").addEventListener("click", arreterMelodie);
+  document.getElementById("enregistrer").addEventListener("click", basculerEnregistrement);
+  document.getElementById("rejouer").addEventListener("click", rejouer);
+  document.getElementById("effacer").addEventListener("click", () => { arreterLecture(); dernier = null; try { localStorage.removeItem(CLE_ENREG); } catch (e) {} resumeEnreg(); });
+
+  // Garder l'écran allumé pendant qu'on joue (si le téléphone l'autorise)
+  let verrou = null;
+  function demanderVeille() {
+    try { if ("wakeLock" in navigator && !verrou) navigator.wakeLock.request("screen").then(v => { verrou = v; v.addEventListener("release", () => { verrou = null; }); }).catch(() => {}); } catch (e) {}
+  }
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && ctx) demanderVeille();
+    if (document.visibilityState === "hidden") { [...appuis.keys()].forEach(relever); }
+  });
+
+  // Redessiner quand l'écran tourne ou change de taille
+  let attente;
+  window.addEventListener("resize", () => { clearTimeout(attente); attente = setTimeout(dessinerZones, 120); });
+
+  // Démarrage
+  majSons(); remplirTonalites(); majGamme(); majTranspo(); majRythmeUI(); majBoutonsMelodie(); resumeEnreg();
+  if (reglages.mode === "composer") appliquerChant();
+  construireScene(); dessinerBandeau();
+  chargerPiano();
+  chargerBatterie();
+
+  // Application hors ligne (seulement quand la page est installée depuis GitHub Pages)
+  if ("serviceWorker" in navigator && location.protocol === "https:" && !/claude/.test(location.hostname)) {
+    try { navigator.serviceWorker.register("sw.js").catch(() => {}); } catch (e) {}
+  }
+})();
+</script>

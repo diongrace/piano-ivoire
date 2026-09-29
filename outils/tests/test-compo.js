@@ -1,0 +1,37 @@
+window.__log=[];const L=m=>window.__log.push(m);
+window.addEventListener('error',e=>L('ERREUR '+e.message+' l.'+e.lineno));
+const attendre=ms=>new Promise(r=>setTimeout(r,ms));
+(async()=>{
+ await attendre(1500);
+ document.getElementById('mode-composer').click(); await attendre(200);
+ const compo=document.querySelector('.compo'); L('panneau='+!!compo);
+ L('mesures exemple='+document.querySelectorAll('.c-mesure').length);
+ document.getElementById('c-nouveau').click(); await attendre(100);
+ L('nouveau chant, mesures='+document.querySelectorAll('.c-mesure').length+' titre='+document.getElementById('c-titre').value);
+ const pal=[...document.querySelectorAll('#c-palette button[data-d]')].slice(0,4);
+ L('palette='+pal.map(b=>b.querySelector('b').textContent).join(','));
+ [0,4,5,3].forEach(i=>{const b=document.querySelectorAll('#c-palette button[data-d]')[i]; b.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true})); b.click();});
+ await attendre(100);
+ L('apres ajout='+[...document.querySelectorAll('.c-mesure b')].map(b=>b.textContent).join(' '));
+ document.querySelector('.c-mesure[data-n="0"]').click(); await attendre(50);
+ const par=document.getElementById('c-paroles'); par.value='Seigneur tu es bon'; par.dispatchEvent(new Event('input',{bubbles:true}));
+ L('paroles='+document.querySelector('.c-mesure[data-n="0"] em').textContent);
+ document.querySelector('.c-sugg').click(); await attendre(50);
+ L('apres suggestion='+document.querySelectorAll('.c-section:first-child .c-mesure').length+' mesures dans la 1re partie');
+ // changer la tonalite du chant : les accords doivent suivre
+ const ton=document.getElementById('c-ton'); ton.value='2'; ton.dispatchEvent(new Event('change',{bubbles:true})); await attendre(50);
+ L('en Re='+[...document.querySelectorAll('.c-mesure b')].slice(0,4).map(b=>b.textContent).join(' '));
+ document.getElementById('c-jouer').click(); await attendre(4000);
+ L('lecture: mesure jouee='+(document.querySelector('.c-mesure.joue')?.dataset.n)+' prompteur="'+document.getElementById('c-prompteur').textContent+'" bouton='+document.getElementById('c-jouer').textContent);
+ document.getElementById('c-jouer').click(); await attendre(200);
+ document.getElementById('c-enreg').click(); await attendre(4500);
+ const t=document.querySelector('.zone .touche.blanche'); const r=t.getBoundingClientRect();
+ t.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,clientX:r.x+5,clientY:r.y+r.height-10,pointerId:7}));
+ await attendre(300); window.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerId:7}));
+ await attendre(300);
+ document.getElementById('c-enreg').click(); await attendre(300);
+ L('apres enregistrement: prompteur="'+document.getElementById('c-prompteur').textContent+'" bouton='+document.getElementById('c-enreg').textContent);
+ await attendre(400);
+ L('sauvegarde='+(localStorage.getItem('piano-ivoire:chants')||'').length+' car.');
+ document.title='FIN '+window.__log.join(' || ');
+})();

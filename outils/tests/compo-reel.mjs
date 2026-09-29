@@ -1,0 +1,15 @@
+import puppeteer from 'puppeteer-core';
+import fs from 'fs';
+const test = fs.readFileSync(process.argv[2], 'utf8');
+const nav = await puppeteer.launch({ executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: true, args: ['--autoplay-policy=no-user-gesture-required'] });
+const page = await nav.newPage();
+await page.setViewport({ width: 844, height: 390, isMobile: true, hasTouch: true });
+const erreurs = [];
+page.on('pageerror', e => erreurs.push(e.message));
+await page.goto('http://localhost:8767/', { waitUntil: 'networkidle0' });
+await page.evaluate(test);
+await page.waitForFunction(() => document.title.startsWith('FIN'), { timeout: 40000 });
+console.log((await page.title()).replace(/ \|\| /g, '\n'));
+console.log('Erreurs JS :', erreurs.length ? erreurs.join(' / ') : 'aucune');
+await page.screenshot({ path: process.argv[3] });
+await nav.close();
