@@ -259,6 +259,7 @@ input[type=range]{accent-color:var(--laiton);width:150px}
     <div class="ligne"><span>Tempo</span>
       <span class="pas"><button type="button" class="bt carre" id="bpm-moins-2" aria-label="Ralentir">−</button><output id="bpm-aff-2">90 bpm</output><button type="button" class="bt carre" id="bpm-plus-2" aria-label="Accélérer">+</button></span>
     </div>
+    <div class="ligne"><label for="bpm-saisie">Tempo exact (20 à 1000)</label><input type="number" class="bt" id="bpm-saisie" min="20" max="1000" step="1" inputmode="numeric" style="width:96px;cursor:text"></div>
     <div class="ligne"><span>Taper le tempo</span><button type="button" class="bt" id="tap">Tape ici en rythme</button></div>
     <div class="ligne"><label for="vol-rythme">Volume du rythme</label><input type="range" id="vol-rythme" min="0" max="100" value="70"></div>
   </section>
@@ -777,6 +778,8 @@ input[type=range]{accent-color:var(--laiton);width:150px}
   window.addEventListener("pointerup", finPointeur);
   window.addEventListener("pointercancel", finPointeur);
   scene.addEventListener("contextmenu", e => e.preventDefault());
+  scene.addEventListener("touchstart", e => { if (e.target.closest(".touches")) e.preventDefault(); }, { passive: false });
+  scene.addEventListener("touchmove", e => { if (e.target.closest(".touches")) e.preventDefault(); }, { passive: false });
 
   // ---------- Clavier d'ordinateur ----------
   window.addEventListener("keydown", e => {
@@ -960,10 +963,12 @@ input[type=range]{accent-color:var(--laiton);width:150px}
     b.firstChild.textContent = rythme.actif ? "■ " : "▶ ";
     document.getElementById("rythme-nom-court").textContent = style().nom;
     ["bpm-aff", "bpm-aff-2"].forEach(id => document.getElementById(id).textContent = reglages.bpm + " bpm");
+    const champ = document.getElementById("bpm-saisie"); if (champ && document.activeElement !== champ) champ.value = reglages.bpm;
     document.querySelectorAll("#styles button").forEach(x => x.setAttribute("aria-pressed", x.dataset.style === reglages.style ? "true" : "false"));
     dessinerBattements();
   }
-  function changerBpm(d) { reglages.bpm = Math.max(40, Math.min(200, reglages.bpm + d)); sauver(); majRythmeUI(); syncChant(); }
+  const BPM_MIN = 20, BPM_MAX = 1000;
+  function changerBpm(d) { reglages.bpm = Math.max(BPM_MIN, Math.min(BPM_MAX, reglages.bpm + d)); sauver(); majRythmeUI(); syncChant(); }
   let taps = [];
   function taper() {
     const now = performance.now();
@@ -971,7 +976,7 @@ input[type=range]{accent-color:var(--laiton);width:150px}
     if (taps.length >= 3) {
       const ecarts = taps.slice(1).map((t, i) => t - taps[i]);
       const moyen = ecarts.reduce((a, b) => a + b, 0) / ecarts.length;
-      reglages.bpm = Math.max(40, Math.min(200, Math.round(60000 / moyen))); sauver(); majRythmeUI(); syncChant();
+      reglages.bpm = Math.max(BPM_MIN, Math.min(BPM_MAX, Math.round(60000 / moyen))); sauver(); majRythmeUI(); syncChant();
     }
     if (audio()) frappe("clic", ctx.currentTime, false);
   }
@@ -1556,8 +1561,22 @@ input[type=range]{accent-color:var(--laiton);width:150px}
   document.getElementById("styles").innerHTML = Object.entries(STYLES).map(([id, s]) => `<button type="button" class="bt" id="style-${id}" data-style="${id}">${s.nom}</button>`).join("");
   document.querySelectorAll("#styles button").forEach(b => b.addEventListener("click", () => { reglages.style = b.dataset.style; sauver(); if (rythme.actif) { rythme.pas = 0; } majRythmeUI(); syncChant(); }));
   document.getElementById("rythme-lancer").addEventListener("click", () => rythme.actif ? (lecteur.actif ? arreterLecteur() : arreterRythme()) : lancerRythme());
-  ["bpm-moins", "bpm-moins-2"].forEach(id => document.getElementById(id).addEventListener("click", () => changerBpm(-2)));
-  ["bpm-plus", "bpm-plus-2"].forEach(id => document.getElementById(id).addEventListener("click", () => changerBpm(2)));
+  function repetition(bouton, sens) {
+    let attenteRep, minuterieRep, n = 0;
+    const pas = () => { n++; changerBpm(sens * (n < 10 ? 1 : n < 25 ? 5 : 10)); };
+    const fin = () => { clearTimeout(attenteRep); clearInterval(minuterieRep); };
+    bouton.addEventListener("pointerdown", e => { e.preventDefault(); fin(); n = 0; pas(); attenteRep = setTimeout(() => { minuterieRep = setInterval(pas, 70); }, 400); });
+    ["pointerup", "pointerleave", "pointercancel"].forEach(ev => bouton.addEventListener(ev, fin));
+    bouton.addEventListener("click", e => { if (e.detail === 0) changerBpm(sens); });   // clavier : Entrée ou Espace
+  }
+  ["bpm-moins", "bpm-moins-2"].forEach(id => repetition(document.getElementById(id), -1));
+  ["bpm-plus", "bpm-plus-2"].forEach(id => repetition(document.getElementById(id), 1));
+  const saisieBpm = document.getElementById("bpm-saisie");
+  saisieBpm.addEventListener("change", () => {
+    const v = Math.round(+saisieBpm.value);
+    if (v >= BPM_MIN && v <= BPM_MAX) { reglages.bpm = v; sauver(); majRythmeUI(); syncChant(); }
+    else saisieBpm.value = reglages.bpm;
+  });
   document.getElementById("tap").addEventListener("click", taper);
   const volR = document.getElementById("vol-rythme"); volR.value = reglages.volRythme;
   volR.addEventListener("input", () => { reglages.volRythme = +volR.value; sauver(); if (batterie) batterie.gain.setTargetAtTime(reglages.volRythme / 100, ctx.currentTime, 0.02); });
