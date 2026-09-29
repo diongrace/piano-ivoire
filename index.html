@@ -257,6 +257,13 @@ input[type=range]{accent-color:var(--laiton);width:150px}
     <p class="cache-tactile" id="aide-clavier"></p>
   </section>
 
+  <section aria-labelledby="m-midi">
+    <h3 id="m-midi">Clavier MIDI</h3>
+    <p>Branche un vrai clavier (USB, avec un adaptateur OTG sur téléphone Android), puis touche <strong>Connecter</strong>. Tu joues sur de vraies touches avec le son de ce piano. La pédale du clavier fonctionne aussi.</p>
+    <div class="grille-btn"><button type="button" class="bt" id="midi-connecter">Connecter</button></div>
+    <span class="etat" id="midi-etat">Aucun clavier connecté.</span>
+  </section>
+
   <section aria-labelledby="m-apprendre">
     <h3 id="m-apprendre">Apprendre une mélodie</h3>
     <p>Choisis un air : <strong>Écouter</strong> le joue, <strong>Jouer</strong> allume en doré la prochaine touche.</p>
@@ -1037,6 +1044,45 @@ input[type=range]{accent-color:var(--laiton);width:150px}
     });
     lecture.push(setTimeout(() => { lecture = []; document.getElementById("rejouer").textContent = "Réécouter"; }, dernier.duree + 400));
   }
+
+  // =========================================================
+  // Clavier MIDI (vraies touches)
+  // =========================================================
+  let acces = null;
+  const midiEtat = document.getElementById("midi-etat");
+  function afficherMidi(msg) { midiEtat.textContent = msg; }
+  function brancherEntrees() {
+    const noms = [];
+    acces.inputs.forEach(entree => { entree.onmidimessage = messageMidi; noms.push(entree.name || "Clavier MIDI"); });
+    afficherMidi(noms.length ? "Connecté : " + noms.join(", ") + "." : "Aucun clavier détecté. Vérifie le câble et l'adaptateur, puis touche Connecter.");
+    document.getElementById("midi-connecter").textContent = noms.length ? "Reconnecter" : "Connecter";
+  }
+  function messageMidi(e) {
+    const [statut, d1, d2] = e.data, type = statut & 0xf0;
+    if (type === 0x90 && d2 > 0) {                       // touche enfoncée
+      const cle = "midi:" + d1;
+      zones.forEach(z => marquer(z, d1, true));
+      jouer(cle, sortieDe(d1), 0.15 + 0.85 * (d2 / 127));
+      verifierMelodie(d1);
+    } else if (type === 0x80 || (type === 0x90 && d2 === 0)) {   // touche relâchée
+      zones.forEach(z => marquer(z, d1, false));
+      lacher("midi:" + d1);
+    } else if (type === 0xb0 && d1 === 64) {             // pédale de sustain
+      reglerPedale(d2 >= 64);
+    }
+  }
+  function connecterMidi() {
+    if (!navigator.requestMIDIAccess) {
+      afficherMidi("Ce navigateur ne gère pas les claviers MIDI. Utilise Chrome ou Edge (sur Android ou sur ordinateur). Safari sur iPhone ne le permet pas.");
+      return;
+    }
+    afficherMidi("Connexion…");
+    navigator.requestMIDIAccess().then(a => {
+      acces = a; audio(); brancherEntrees();
+      acces.onstatechange = () => brancherEntrees();     // clavier branché ou débranché
+    }).catch(() => afficherMidi("Accès au clavier refusé. Autorise « appareils MIDI » pour ce site dans les réglages du navigateur, puis réessaie."));
+  }
+  document.getElementById("midi-connecter").addEventListener("click", connecterMidi);
 
   // =========================================================
   // Menu et commandes
