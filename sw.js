@@ -1,5 +1,5 @@
 // Garde le piano disponible sans Internet
-const CACHE = 'piano-ivoire-v2-202609291446';
+const CACHE = 'piano-ivoire-v2-202609301732';
 const FICHIERS = ['./', './index.html', './manifest.webmanifest', './icones/icone-192.png', './icones/icone-512.png', './icones/icone-180.png',
   ...'A0 C1 Ds1 Fs1 A1 C2 Ds2 Fs2 A2 C3 Ds3 Fs3 A3 C4 Ds4 Fs4 A4 C5 Ds5 Fs5 A5 C6 Ds6 Fs6 A6 C7 Ds7 Fs7 A7 C8'.split(' ').map(n => './sons/piano/' + n + '.mp3'),
   ...'kick snare1 snare2 rim hat1 hat2 hatOuvert tomH tomB crash congaB congaH shaker1 shaker2 cloche clap1 clap2 clave tamb'.split(' ').map(n => './sons/batterie/' + n + '.mp3')];

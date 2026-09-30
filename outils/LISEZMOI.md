@@ -3,7 +3,7 @@
 - `piano-source.html` : le code du piano (HTML, CSS et JavaScript). **C'est ce fichier qu'on modifie.**
 - `polices.css` : les polices intégrées, pour le mode hors ligne.
 - `construire.js` : fabrique `index.html`, `sw.js`, `manifest.webmanifest` et `README.md` à la racine du dépôt.
-- `tests/` : les tests automatiques (Node.js, puppeteer-core et Google Chrome).
+- `tests/` : les tests automatiques (Node.js, puppeteer-core et Google Chrome). Pour « Trouver les notes » : `node tests/voix-wav.js` fabrique un chant de test (voix-test.wav), puis `node tests/notes-voix.mjs` le fait écouter au piano par un faux micro et par l’import de fichier.
 
 ## Faire une modification
 1. Modifier `outils/piano-source.html`.

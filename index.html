@@ -147,6 +147,36 @@ select.bt{appearance:none;-webkit-appearance:none;padding-right:26px;background-
 .pad button.note[aria-pressed="true"]{background:#3a2d17;border-color:var(--laiton)}
 @media (max-width:640px){.pad{grid-template-columns:repeat(5,minmax(0,1fr));height:auto}.pad button{min-height:56px}}
 
+/* ---------- Trouver les notes ---------- */
+.notes-voix{gap:8px}
+.n-milieu{display:flex;gap:8px;min-width:0;flex:none}
+.n-direct{flex:none;width:132px;border:1px solid var(--reflet);background:var(--laque);border-radius:10px;padding:6px 8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
+.n-direct b{font-family:var(--affiche);font-weight:400;font-size:34px;line-height:1;color:var(--texte-2)}
+.n-direct b sub{font-size:13px;margin-left:2px;color:var(--texte-2)}
+.n-direct.chante b{color:var(--laiton-clair)}
+.n-direct[data-juste="1"].chante small{color:#7fd49a}
+.n-direct small{font-size:11.5px;font-weight:700;color:var(--texte-2)}
+.n-jauge{position:relative;width:100%;height:8px;border-radius:99px;background:linear-gradient(90deg,#8a3b2a,#3d4a2f 35%,#2f6b46 50%,#3d4a2f 65%,#8a3b2a)}
+.n-aiguille{position:absolute;top:-3px;left:50%;width:4px;height:14px;margin-left:-2px;border-radius:2px;background:var(--laiton-clair);transition:left .08s}
+.n-droite{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.n-paroles{font-family:var(--ui);font-weight:600;width:100%;height:auto;min-height:44px;resize:vertical;cursor:text;text-align:left;padding:6px 10px;font-size:14px;line-height:1.35}
+.n-ligne{display:flex;gap:10px;align-items:center;min-width:0;font-size:13px;color:var(--texte-2);overflow-x:auto;scrollbar-width:none;white-space:nowrap}
+.n-ligne b{color:var(--laiton-clair)}
+.n-acc{display:flex;gap:6px;align-items:center}
+.n-acc b{font-family:var(--affiche);font-weight:400;font-size:17px;border:1px solid var(--reflet);border-radius:7px;padding:0 6px}
+.n-acc b.joue{background:var(--laiton);color:#1b1408}
+.n-resultat{display:flex;gap:5px;overflow-x:auto;min-height:56px;flex:none;padding-bottom:2px;scrollbar-width:thin;align-items:stretch}
+.n-syl{flex:none;min-width:44px;border:1px solid var(--reflet);background:var(--laque);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:3px 6px;cursor:pointer}
+.n-syl b{font-family:var(--affiche);font-weight:400;font-size:19px;color:var(--laiton-clair);line-height:1.05}
+.n-syl small{font-size:12px;color:var(--texte);min-height:15px}
+.n-syl.sans b{color:var(--texte-2)}
+.n-syl.joue{background:var(--laiton);border-color:var(--laiton)}
+.n-syl.joue b,.n-syl.joue small{color:#1b1408}
+.n-vide{color:var(--texte-2);font-size:13px;align-self:center;white-space:normal}
+#n-micro.enreg{background:#b8452b;border-color:#b8452b;color:#fff}
+.bt.off{opacity:.45;pointer-events:none}
+@media (max-width:640px){.n-milieu{flex-direction:column}.n-direct{width:100%;flex-direction:row;gap:12px}.n-jauge{flex:1}}
+
 /* ---------- Composer ---------- */
 .compo{flex:none;display:flex;flex-direction:column;gap:6px;max-height:70%;min-width:0;overflow:hidden;background:var(--laque-2);border-radius:10px;padding:8px}
 .c-tete{display:flex;gap:6px;flex-wrap:nowrap;align-items:center;overflow-x:auto;scrollbar-width:none;flex:none}
@@ -237,6 +267,7 @@ input[type=range]{accent-color:var(--laiton);width:150px}
       <button type="button" id="mode-accords" data-mode="accords" aria-pressed="false">Accords</button>
       <button type="button" id="mode-composer" data-mode="composer" aria-pressed="false">Composer</button>
       <button type="button" id="mode-arrangeur" data-mode="arrangeur" aria-pressed="false">Arrangeur</button>
+      <button type="button" id="mode-notes" data-mode="notes" aria-pressed="false" aria-label="Trouver les notes d'un chant">🎤 Notes</button>
     </div>
     <select class="bt masque-etroit" id="son-rapide" aria-label="Son"></select>
     <button type="button" class="bt" id="rythme-lancer" aria-pressed="false" aria-label="Lancer le rythme">▶ <span id="rythme-nom-court" class="masque-etroit">Rythme</span></button>
@@ -395,7 +426,7 @@ input[type=range]{accent-color:var(--laiton);width:150px}
     mode: "piano", son: "concert", volume: 85, reverb: 22, nom: "fr", clavier: "azerty", taille: 14,
     tonalite: 0, majeur: true, gamme: false, transpo: 0,
     style: "louange", bpm: 90, volRythme: 70,
-    debuts: { piano: 48, haut: 60, bas: 36, accords: 55, compo: 55, arr: 48 }, chantId: null,
+    debuts: { piano: 48, haut: 60, bas: 36, accords: 55, compo: 55, arr: 48, voix: 53 }, chantId: null,
     arrStyle: "louange", doigte: "complet", couche: false, split: 60, volAccomp: 70, arrSync: true
   };
   try {
@@ -680,14 +711,15 @@ input[type=range]{accent-color:var(--laiton);width:150px}
   function construireScene() {
     scene.textContent = ""; zones.length = 0;
     const mode = reglages.mode;
-    compo = null;
+    compo = null; panneauNotes = null;
     if (mode === "composer") construireComposeur();
+    if (mode === "notes") construireNotes();
     if (mode === "arrangeur") construireArrangeur();
     const def = mode === "deux"
       ? [{ id: "haut", role: "Main droite" }, { id: "bas", role: "Main gauche" }]
       : mode === "accords" ? [{ id: "accords", role: "Mélodie" }]
       : mode === "composer" ? [{ id: "compo", role: "Ta mélodie" }]
-      : mode === "arrangeur" ? [{ id: "arr", role: "Accords | Mélodie" }] : [{ id: "piano", role: "88 touches" }];
+      : mode === "arrangeur" ? [{ id: "arr", role: "Accords | Mélodie" }] : mode === "notes" ? [{ id: "voix", role: "Ta voix" }] : [{ id: "piano", role: "88 touches" }];
     def.forEach(d => {
       const z = { id: d.id, role: d.role, debut: blanchePlusProche(reglages.debuts[d.id]) };
       const el = document.createElement("section"); el.className = "zone"; el.setAttribute("aria-label", d.role);
@@ -727,7 +759,7 @@ input[type=range]{accent-color:var(--laiton);width:150px}
     z.carte.addEventListener("pointercancel", () => { actif = false; });
   }
   function dessinerZones() { zones.forEach(dessinerZone); dessinerAideClavier(); }
-  function zoneClavierOrdi() { return zones.find(z => z.id === "haut" || z.id === "piano" || z.id === "accords" || z.id === "compo" || z.id === "arr"); }
+  function zoneClavierOrdi() { return zones.find(z => z.id === "haut" || z.id === "piano" || z.id === "accords" || z.id === "compo" || z.id === "arr" || z.id === "voix"); }
   function debutClavierOrdi(z) {
     const bas = BLANCHES[z.debut], haut = BLANCHES[z.debut + z.nb - 1];
     if (60 >= bas && 60 <= haut) return 60;
@@ -1101,7 +1133,7 @@ input[type=range]{accent-color:var(--laiton);width:150px}
     bandeau.innerHTML = portrait + s.suite.map((n, i) => `<span class="puce ${i < position ? "faite" : i === position && modeMelodie !== "repos" ? "courante" : ""}">${nomDe(n.m, false)}</span>`).join("") +
       (info ? `<span class="info${bravo ? " bravo" : ""}">${info}</span>` : "");
   }
-  function zoneMelodie() { return zones.find(z => z.id === "haut" || z.id === "piano" || z.id === "accords" || z.id === "compo" || z.id === "arr"); }
+  function zoneMelodie() { return zones.find(z => z.id === "haut" || z.id === "piano" || z.id === "accords" || z.id === "compo" || z.id === "arr" || z.id === "voix"); }
   function montrerPlage(notes) {
     const z = zoneMelodie(); if (!z) return;
     const bas = Math.min(...notes), haut = Math.max(...notes);
@@ -1546,6 +1578,356 @@ input[type=range]{accent-color:var(--laiton);width:150px}
     en.disabled = lecteur.actif && !lecteur.enregistre;
   }
 
+  // =========================================================
+  // Trouver les notes : tu chantes (ou tu importes un audio), le piano écrit les notes
+  // =========================================================
+  const CLE_VOIX = "piano-ivoire:notes-trouvees";
+  const SR_ANALYSE = 16000;                 // on analyse la voix à 16 kHz : assez pour une voix, et rapide
+  const trouve = { notes: [], paroles: "", ton: null, micro: null, direct: null, lecture: [], seg: null, analyse: false };
+  try { const lu = JSON.parse(localStorage.getItem(CLE_VOIX) || "null"); if (lu && Array.isArray(lu.notes)) { trouve.notes = lu.notes; trouve.paroles = lu.paroles || ""; } } catch (e) {}
+  const sauverTrouve = () => { try { localStorage.setItem(CLE_VOIX, JSON.stringify({ notes: trouve.notes, paroles: trouve.paroles })); } catch (e) {} };
+  let panneauNotes = null;
+
+  // ---------- Hauteur d'un morceau de son (méthode McLeod, NSDF) ----------
+  function hauteur(buf, sr) {
+    const n = buf.length;
+    let e = 0; for (let i = 0; i < n; i++) e += buf[i] * buf[i];
+    const rms = Math.sqrt(e / n), rien = { midi: null, rms };
+    if (rms < 0.012) return rien;
+    const minLag = Math.floor(sr / 1000), maxLag = Math.min(Math.floor(sr / 65), n >> 1);
+    const nsdf = new Float32Array(maxLag + 2);
+    for (let tau = minLag; tau <= maxLag + 1; tau++) {
+      let acf = 0, m = 0;
+      for (let i = 0, lim = n - tau; i < lim; i++) { const a = buf[i], b = buf[i + tau]; acf += a * b; m += a * a + b * b; }
+      nsdf[tau] = m > 0 ? 2 * acf / m : 0;
+    }
+    // pics positifs entre deux passages par zéro
+    const pics = []; let tau = minLag;
+    while (tau <= maxLag && nsdf[tau] > 0) tau++;
+    while (tau <= maxLag) {
+      while (tau <= maxLag && nsdf[tau] <= 0) tau++;
+      let best = -1, bi = -1;
+      while (tau <= maxLag && nsdf[tau] > 0) { if (nsdf[tau] > best) { best = nsdf[tau]; bi = tau; } tau++; }
+      if (bi > 0) pics.push(bi);
+    }
+    if (!pics.length) return rien;
+    const max = Math.max(...pics.map(p => nsdf[p]));
+    const p = pics.find(x => nsdf[x] >= 0.88 * max);
+    const clarte = nsdf[p];
+    if (clarte < 0.72) return rien;
+    const a = nsdf[p - 1], b = nsdf[p], c = nsdf[p + 1], d = a - 2 * b + c;
+    const decal = d ? 0.5 * (a - c) / d : 0;
+    const f = sr / (p + decal);
+    if (f < 65 || f > 1000) return rien;
+    return { f, midi: 69 + 12 * Math.log2(f / 440), clarte, rms };
+  }
+  // Rééchantillonnage simple vers 16 kHz (moyenne des échantillons)
+  function vers16k(donnees, sr) {
+    const pas = sr / SR_ANALYSE, n = Math.floor(donnees.length / pas), sortie = new Float32Array(n);
+    for (let i = 0; i < n; i++) { const a = Math.floor(i * pas), b = Math.max(a + 1, Math.floor((i + 1) * pas)); let s = 0; for (let j = a; j < b; j++) s += donnees[j]; sortie[i] = s / (b - a); }
+    return sortie;
+  }
+
+  // ---------- Découpage en notes (même règle pour le micro et pour un fichier) ----------
+  function nouveauDecoupeur(surNote) {
+    let cur = null, cand = null, dernierSon = 0;
+    const fermer = t => {
+      if (cur && t - cur.t0 >= 0.08) {
+        const tri = cur.v.slice().sort((a, b) => a - b), med = tri[tri.length >> 1];
+        surNote({ m: Math.round(med), t0: cur.t0, t1: t });
+      }
+      cur = null;
+    };
+    return {
+      pousser(t, midi, rms = 1) {
+        const creux = cur && rms < (midi == null ? 0.5 : 0.3) * cur.pic;
+        if (creux) { fermer(dernierSon); cand = null; return; }
+        if (midi == null) { if (cur && t - dernierSon > 0.12) fermer(dernierSon); cand = null; return; }
+        dernierSon = t;
+        if (cur && Math.abs(midi - cur.moy) < 0.75) { cur.v.push(midi); cur.pic = Math.max(cur.pic, rms); cur.moy += (midi - cur.moy) / Math.min(cur.v.length, 8); cand = null; return; }
+        const r = Math.round(midi);
+        if (cand && cand.m === r) { if (t - cand.t >= 0.06) { fermer(cand.t); cur = { t0: cand.t, v: cand.v.concat(midi), moy: midi, pic: rms }; cand = null; } else cand.v.push(midi); }
+        else { cand = { m: r, t, v: [midi] }; if (!cur) { cur = { t0: t, v: [midi], moy: midi, pic: rms }; cand = null; } }
+      },
+      finir(t) { fermer(cur ? Math.max(dernierSon, cur.t0) : t); }
+    };
+  }
+
+  // ---------- Tonalité (profils de Krumhansl) et accords ----------
+  const PROFIL_MAJ = [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88];
+  const PROFIL_MIN = [6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17];
+  function devinerTon(notes) {
+    if (notes.length < 3) return null;
+    const h = new Array(12).fill(0);
+    notes.forEach(n => { h[((n.m % 12) + 12) % 12] += Math.min(1.5, n.t1 - n.t0); });
+    const der = notes[notes.length - 1]; h[((der.m % 12) + 12) % 12] += 1.5;     // un chant finit souvent sur la tonique
+    const corr = (x, y) => { const mx = x.reduce((a, b) => a + b) / 12, my = y.reduce((a, b) => a + b) / 12; let s = 0, sx = 0, sy = 0; for (let i = 0; i < 12; i++) { s += (x[i] - mx) * (y[i] - my); sx += (x[i] - mx) ** 2; sy += (y[i] - my) ** 2; } return s / Math.sqrt(sx * sy || 1); };
+    let best = null;
+    for (let t = 0; t < 12; t++) for (const maj of [true, false]) {
+      const p = (maj ? PROFIL_MAJ : PROFIL_MIN).map((_, i) => (maj ? PROFIL_MAJ : PROFIL_MIN)[(i - t + 12) % 12]);
+      const r = corr(h, p); if (!best || r > best.r) best = { t, maj, r };
+    }
+    return best;
+  }
+  const mesureSec = () => style().temps * 60 / reglages.bpm;
+  function harmoniser(notes, ton) {
+    if (!notes.length || !ton) return [];
+    const t0 = notes[0].t0, fin = notes[notes.length - 1].t1, M = mesureSec(), nb = Math.max(1, Math.ceil((fin - t0) / M - 0.15));
+    const cands = (ton.maj ? DEGRES_MAJ : DEGRES_MIN).filter(([, q]) => q === "maj" || q === "min").map(([d, q], k) => ({ d, q, pref: 0.06 * (d === 0 ? 3 : d === 7 ? 2 : d === 5 ? 1.5 : 1) - k * 0.001 }));
+    const res = []; let prec = null;
+    for (let i = 0; i < nb; i++) {
+      const a = t0 + i * M, b = a + M;
+      const dans = notes.filter(n => n.t1 > a && n.t0 < b);
+      if (!dans.length) { res.push(prec || cands[0]); continue; }
+      let best = null;
+      cands.forEach(c => {
+        const tons = QUALITES[c.q].iv.map(x => (ton.t + c.d + x) % 12);
+        let s = c.pref + ((i === 0 || i === nb - 1) && c.d === 0 ? 0.3 : 0);
+        dans.forEach(n => { const du = Math.min(n.t1, b) - Math.max(n.t0, a), pc = ((n.m % 12) + 12) % 12; s += tons.includes(pc) ? du * (pc === (ton.t + c.d) % 12 ? 1.2 : 1) : -du * 0.4; });
+        if (!best || s > best.s) best = { ...c, s };
+      });
+      res.push(best); prec = best;
+    }
+    return res;
+  }
+
+  // ---------- Paroles → syllabes ----------
+  const VOY = "aeiouyàâäéèêëîïôöùûüœæ";
+  function syllabesMot(mot) {
+    if (mot.includes("-")) return mot.split("-").filter(Boolean);
+    const bas = mot.toLowerCase(), groupes = [];
+    let i = 0;
+    while (i < bas.length) {             // repère les groupes de voyelles
+      if (VOY.includes(bas[i])) { let j = i; while (j < bas.length && (VOY.includes(bas[j]) || (bas[j] === "u" && bas[j - 1] === "q")) && !(bas[j] === "y" && j > i && VOY.includes(bas[j + 1] || ""))) j++; if (j === i) j++; groupes.push([i, j]); i = j; } else i++;
+    }
+    if (groupes.length <= 1) return [mot];
+    // « e » final muet après une autre syllabe : on le garde, un chant le prononce souvent
+    const coupes = [];
+    for (let k = 0; k < groupes.length - 1; k++) {
+      const deb = groupes[k][1], finC = groupes[k + 1][0], cons = bas.slice(deb, finC);
+      let c;
+      if (cons.length <= 1) c = deb;
+      else if (/^(ch|ph|gn|th|qu)$/.test(cons.slice(-2)) || /^[bcdfgkptv][lr]$/.test(cons.slice(-2))) c = finC - 2;
+      else c = finC - 1;
+      coupes.push(Math.max(deb, c));
+    }
+    const res = []; let a = 0;
+    coupes.forEach(c => { res.push(mot.slice(a, c)); a = c; }); res.push(mot.slice(a));
+    const r = res.filter(Boolean);
+    if (r.length > 1 && /^[^aeiouyàâäéèêëîïôöùûüœæ]+es?[,.;:!?…»"]*$/i.test(r[r.length - 1])) r[r.length - 2] += r.pop();   // « e » muet final
+    return r;
+  }
+  function syllabesDetail(texte) {
+    return texte.replace(/[’]/g, "'").split(/\s+/).filter(Boolean).flatMap(mot => {
+      const m = mot.match(/^([ldjmnstc]|qu|jusqu|lorsqu|puisqu)'(.+)$/i);       // l'amour → l'a-mour
+      let s; if (m) { s = syllabesMot(m[2]); s[0] = m[1] + "'" + s[0]; } else s = syllabesMot(mot);
+      return s.map((x, i) => ({ s: x, debut: i === 0 }));
+    });
+  }
+  const syllabes = texte => syllabesDetail(texte).map(x => x.s);
+
+  // ---------- Micro en direct ----------
+  async function demarrerMicro() {
+    const ac = audio(); if (!ac) return;
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { infoNotes("Le micro n'est pas disponible ici. Ouvre le piano installé (diongrace.github.io/piano-ivoire) dans Chrome."); return; }
+    arreterLectureTrouve();
+    let flux;
+    try { flux = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } }); }
+    catch (e) { infoNotes(e && e.name === "NotAllowedError" ? "Le micro est refusé. Autorise-le dans les réglages du navigateur (icône à gauche de l'adresse), puis réessaie." : "Impossible d'ouvrir le micro sur cet appareil."); return; }
+    const src = ac.createMediaStreamSource(flux), an = ac.createAnalyser(); an.fftSize = 4096; src.connect(an);
+    const buf = new Float32Array(an.fftSize), debut = ac.currentTime;
+    trouve.notes = []; trouve.ton = null;
+    trouve.seg = nouveauDecoupeur(n => { trouve.notes.push(n); dessinerResultat(); });
+    trouve.micro = { flux, src, an, buf, debut };
+    trouve.micro.minuteur = setInterval(() => {
+      an.getFloatTimeDomainData(buf);
+      const court = vers16k(buf, ac.sampleRate).subarray(-640), h = hauteur(court, SR_ANALYSE), t = ac.currentTime - debut;
+      trouve.seg.pousser(t, h.midi, h.rms);
+      afficherDirect(h.midi != null ? h : null);
+    }, 40);
+    majBoutonsNotes(); infoNotes("Chante… (une seule voix, dans un endroit calme)");
+  }
+  function arreterMicro() {
+    const mi = trouve.micro; if (!mi) return;
+    clearInterval(mi.minuteur);
+    trouve.seg.finir(audio().currentTime - mi.debut);
+    mi.flux.getTracks().forEach(t => t.stop()); try { mi.src.disconnect(); } catch (e) {}
+    trouve.micro = null; afficherDirect(null);
+    finaliser(); majBoutonsNotes();
+  }
+  function finaliser() {
+    trouve.ton = devinerTon(trouve.notes);
+    sauverTrouve(); dessinerResultat();
+    infoNotes(trouve.notes.length ? `${trouve.notes.length} note${trouve.notes.length > 1 ? "s" : ""} trouvée${trouve.notes.length > 1 ? "s" : ""}. Touche ▶ pour les réécouter au piano.` : "Aucune note trouvée. Chante plus fort, plus près du téléphone, une note à la fois.");
+  }
+  let dernierAllume = null;
+  function afficherDirect(h) {
+    if (!panneauNotes) return;
+    const el = panneauNotes.querySelector("#n-direct"), z = zones.find(x => x.id === "voix");
+    if (dernierAllume != null && z) { marquer(z, dernierAllume, false); dernierAllume = null; }
+    if (!h) { el.classList.remove("chante"); el.querySelector("b").textContent = trouve.micro ? "…" : "—"; el.querySelector(".n-aiguille").style.left = "50%"; el.querySelector("small").textContent = trouve.micro ? "J'écoute" : "Prêt"; return; }
+    const m = Math.round(h.midi), cents = Math.round((h.midi - m) * 100);
+    el.classList.add("chante");
+    el.querySelector("b").innerHTML = `${nomPc(m)}<sub>${octaveDe(m)}</sub>`;
+    el.querySelector(".n-aiguille").style.left = (50 + cents) + "%";
+    el.querySelector("small").textContent = Math.abs(cents) <= 15 ? "Juste ✓" : cents > 0 ? "Un peu haut" : "Un peu bas";
+    el.dataset.juste = Math.abs(cents) <= 15 ? "1" : "0";
+    if (z) { if (m < z.bas || m > z.haut) { z.debut = Math.max(0, Math.min(BLANCHES.length - z.nb, blanchePlusProche(m) - Math.floor(z.nb / 2))); dessinerZone(z); } marquer(z, m, true); dernierAllume = m; }
+  }
+
+  // ---------- Importer un enregistrement ----------
+  async function analyserFichier(fichier) {
+    const ac = audio(); if (!ac || !fichier) return;
+    arreterMicro(); arreterLectureTrouve();
+    infoNotes("Lecture du fichier…");
+    let tampon;
+    try { tampon = await ac.decodeAudioData(await fichier.arrayBuffer()); }
+    catch (e) { infoNotes("Ce fichier audio ne peut pas être lu sur ce téléphone. Essaie un fichier mp3, m4a, wav ou une note vocale."); return; }
+    const mono = new Float32Array(tampon.length);
+    for (let c = 0; c < tampon.numberOfChannels; c++) { const d = tampon.getChannelData(c); for (let i = 0; i < d.length; i++) mono[i] += d[i] / tampon.numberOfChannels; }
+    // on ramène le volume à un niveau normal (enregistrements faibles)
+    let pic = 0; for (let i = 0; i < mono.length; i += 4) pic = Math.max(pic, Math.abs(mono[i]));
+    if (pic > 0 && pic < 0.5) for (let i = 0; i < mono.length; i++) mono[i] *= 0.5 / pic;
+    const s = vers16k(mono, tampon.sampleRate), N = 640, PAS = 192;
+    trouve.notes = []; trouve.analyse = true; majBoutonsNotes();
+    const seg = nouveauDecoupeur(n => trouve.notes.push(n));
+    let i = 0;
+    await new Promise(fini => {
+      const lot = () => {
+        const lim = Math.min(s.length - N, i + PAS * 120);
+        for (; i <= lim; i += PAS) { const h = hauteur(s.subarray(i, i + N), SR_ANALYSE); seg.pousser((i + N / 2) / SR_ANALYSE, h.midi, h.rms); }
+        infoNotes(`Analyse de l'enregistrement… ${Math.min(100, Math.round(i / Math.max(1, s.length - N) * 100))} %`);
+        if (i < s.length - N) setTimeout(lot, 0); else { seg.finir(s.length / SR_ANALYSE); fini(); }
+      };
+      lot();
+    });
+    trouve.analyse = false; finaliser(); majBoutonsNotes();
+  }
+
+  // ---------- Réécouter au piano ----------
+  function arreterLectureTrouve() {
+    trouve.lecture.forEach(clearTimeout); trouve.lecture = [];
+    [...voix.keys()].filter(k => k.startsWith("tn:") || k.startsWith("ta:")).forEach(k => lacher(k, { demo: true, force: true }));
+    const z = zones.find(x => x.id === "voix"); if (z) z.touches.querySelectorAll(".appuyee").forEach(el => el.classList.remove("appuyee"));
+    if (panneauNotes) panneauNotes.querySelectorAll(".n-syl.joue").forEach(x => x.classList.remove("joue"));
+    majBoutonsNotes();
+  }
+  function rejouer(avecAccords) {
+    if (!audio() || !trouve.notes.length) return;
+    arreterMicro(); arreterLectureTrouve();
+    const t0 = trouve.notes[0].t0, z = () => zones.find(x => x.id === "voix");
+    trouve.notes.forEach((n, i) => {
+      trouve.lecture.push(setTimeout(() => {
+        jouer("tn:" + i, sortieDe(n.m), 0.8, { demo: true }); const zz = z(); if (zz) marquer(zz, n.m, true);
+        const s = panneauNotes && panneauNotes.querySelector(`.n-syl[data-i="${i}"]`); if (s) { s.classList.add("joue"); try { s.scrollIntoView({ block: "nearest", inline: "center" }); } catch (e) {} }
+      }, (n.t0 - t0) * 1000));
+      trouve.lecture.push(setTimeout(() => {
+        lacher("tn:" + i, { demo: true, force: true }); const zz = z(); if (zz) marquer(zz, n.m, false);
+        const s = panneauNotes && panneauNotes.querySelector(`.n-syl[data-i="${i}"]`); if (s) s.classList.remove("joue");
+      }, (n.t1 - t0) * 1000 - 15));
+    });
+    if (avecAccords && trouve.ton) {
+      const M = mesureSec();
+      harmoniser(trouve.notes, trouve.ton).forEach((c, i) => trouve.lecture.push(setTimeout(() => {
+        [...voix.keys()].filter(k => k.startsWith("ta:")).forEach(k => lacher(k, { demo: true, force: true }));
+        const { notes, basse } = voicing((trouve.ton.t + c.d) % 12, c.q);
+        jouer("ta:b", sortieDe(basse), 0.5, { demo: true }); notes.forEach((m, k) => jouer("ta:" + k, sortieDe(m), 0.36, { demo: true }));
+        const el = panneauNotes && panneauNotes.querySelectorAll(".n-acc b")[i]; if (el) { panneauNotes.querySelectorAll(".n-acc b.joue").forEach(x => x.classList.remove("joue")); el.classList.add("joue"); }
+      }, i * M * 1000)));
+    }
+    const fin = trouve.notes[trouve.notes.length - 1].t1 - t0;
+    trouve.lecture.push(setTimeout(arreterLectureTrouve, fin * 1000 + 400));
+    majBoutonsNotes();
+  }
+
+  // ---------- Envoyer dans Composer ----------
+  function versComposer() {
+    if (!trouve.notes.length || !trouve.ton) return;
+    arreterMicro(); arreterLectureTrouve();
+    const ton = trouve.ton, acc = harmoniser(trouve.notes, ton), M = mesureSec(), t0 = trouve.notes[0].t0, bat = 60 / reglages.bpm;
+    const syl = syllabesDetail(trouve.paroles);
+    const c = chantVide(trouve.paroles.trim() ? trouve.paroles.trim().split(/\s+/).slice(0, 5).join(" ") : "Chant trouvé " + new Date().toLocaleDateString("fr-FR"));
+    Object.assign(c, { tonalite: ton.t, majeur: ton.maj, bpm: reglages.bpm, style: reglages.style });
+    c.sections = [{ nom: "Chant", mesures: acc.map((a, i) => ({ d: a.d, q: a.q, p: trouve.notes.map((n, k) => ({ n, x: syl[k] })).filter(o => o.x && o.n.t0 - t0 >= i * M && o.n.t0 - t0 < (i + 1) * M).map((o, j) => (o.x.debut && j ? " " : "") + o.x.s).join("") }) ) }];
+    c.melodie = { evts: trouve.notes.flatMap(n => [{ t: (n.t0 - t0) / bat, m: n.m, on: 1, f: 0.75 }, { t: (n.t1 - t0) / bat, m: n.m, on: 0 }]) };
+    chants.unshift(c); chantId = c.id; sauverChants();
+    document.getElementById("mode-composer").click();
+    majPrompteur("Ton chant est dans Composer : les accords et la mélodie sont placés. Touche ▶ Écouter.");
+  }
+
+  // ---------- Écran ----------
+  function infoNotes(t) { const el = panneauNotes && panneauNotes.querySelector("#n-info"); if (el) el.textContent = t; }
+  function majBoutonsNotes() {
+    if (!panneauNotes) return;
+    const q = s => panneauNotes.querySelector(s), vide = !trouve.notes.length, occupe = !!trouve.micro || trouve.analyse;
+    q("#n-micro").textContent = trouve.micro ? "■ Arrêter" : "🎤 Chanter";
+    q("#n-micro").classList.toggle("enreg", !!trouve.micro);
+    q("#n-micro").disabled = trouve.analyse;
+    q("#n-fichier-lbl").classList.toggle("off", occupe);
+    q("#n-rejouer").textContent = trouve.lecture.length ? "■ Stop" : "▶ Réécouter";
+    ["#n-rejouer", "#n-accords", "#n-composer", "#n-effacer", "#n-bas", "#n-haut"].forEach(s => q(s).disabled = vide || occupe);
+  }
+  function dessinerResultat() {
+    if (!panneauNotes) return;
+    const syl = syllabes(trouve.paroles), ton = trouve.ton, res = panneauNotes.querySelector("#n-resultat");
+    const n = Math.max(trouve.notes.length, trouve.notes.length ? Math.min(syl.length, trouve.notes.length + 12) : 0);
+    res.innerHTML = trouve.notes.length ? Array.from({ length: n }, (_, i) => { const x = trouve.notes[i];
+      return `<button type="button" class="n-syl${x ? "" : " sans"}" data-i="${i}"><b>${x ? nomPc(x.m) : "?"}</b><small>${echapper(syl[i] || "")}</small></button>`; }).join("")
+      : `<p class="n-vide">Touche <b>🎤 Chanter</b> et chante ton chant lentement, ou importe une note vocale. Les notes s'écriront ici${trouve.paroles.trim() ? ", sous tes paroles" : ""}.</p>`;
+    const accs = ton ? harmoniser(trouve.notes, ton) : [];
+    panneauNotes.querySelector("#n-ton").innerHTML = ton ? `Tonalité : <b>${nomPc(ton.t)} ${ton.maj ? "majeur" : "mineur"}</b>` : "Tonalité : —";
+    panneauNotes.querySelector("#n-acc").innerHTML = accs.length ? `<span>Accords (1 par mesure à ${reglages.bpm} bpm) :</span>` + accs.map(a => `<b>${nomAccord((ton.t + a.d) % 12, a.q)}</b>`).join("") : "";
+    if (syl.length && trouve.notes.length && syl.length !== trouve.notes.length) infoNotes(`${trouve.notes.length} notes pour ${syl.length} syllabes : si une note tombe mal, sépare toi-même les syllabes avec des tirets (lou-an-ge) ou rechante plus détaché.`);
+    majBoutonsNotes();
+  }
+  function construireNotes() {
+    const p = document.createElement("section"); p.className = "compo notes-voix"; p.setAttribute("aria-label", "Trouver les notes d'un chant");
+    p.innerHTML = `
+      <div class="c-tete">
+        <button type="button" class="bt plein" id="n-micro">🎤 Chanter</button>
+        <label class="bt" id="n-fichier-lbl" for="n-fichier" style="cursor:pointer">⬆ Importer un audio</label><input type="file" id="n-fichier" accept="audio/*,.opus,.ogg,.m4a,.mp3,.wav,.aac" hidden>
+        <button type="button" class="bt" id="n-rejouer">▶ Réécouter</button>
+        <button type="button" class="bt" id="n-accords">▶ Avec les accords</button>
+        <button type="button" class="bt carre" id="n-bas" aria-label="Tout un demi-ton plus bas">♭</button>
+        <button type="button" class="bt carre" id="n-haut" aria-label="Tout un demi-ton plus haut">♯</button>
+        <button type="button" class="bt" id="n-composer">→ Composer</button>
+        <button type="button" class="bt" id="n-effacer">Effacer</button>
+      </div>
+      <div class="n-milieu">
+        <div class="n-direct" id="n-direct" aria-live="polite"><b>—</b><div class="n-jauge"><i class="n-aiguille"></i></div><small>Prêt</small></div>
+        <div class="n-droite">
+          <textarea class="bt n-paroles" id="n-paroles" rows="2" placeholder="Paroles (facultatif) : écris-les, puis chante-les. Chaque note se place au-dessus de sa syllabe. Pour couper toi-même : sai-re." aria-label="Paroles du chant"></textarea>
+          <div class="n-ligne"><span id="n-ton">Tonalité : —</span><span class="n-acc" id="n-acc"></span></div>
+        </div>
+      </div>
+      <div class="n-resultat" id="n-resultat" aria-label="Notes trouvées"></div>
+      <div class="c-transport"><span class="c-prompteur n-info" id="n-info" aria-live="polite"></span></div>`;
+    scene.appendChild(p); panneauNotes = p;
+    const q = s => p.querySelector(s);
+    q("#n-paroles").value = trouve.paroles;
+    q("#n-paroles").addEventListener("input", e => { trouve.paroles = e.target.value; sauverTrouve(); dessinerResultat(); });
+    q("#n-micro").addEventListener("click", () => trouve.micro ? arreterMicro() : demarrerMicro());
+    q("#n-fichier").addEventListener("change", e => { const f = e.target.files[0]; e.target.value = ""; analyserFichier(f); });
+    q("#n-rejouer").addEventListener("click", () => trouve.lecture.length ? arreterLectureTrouve() : rejouer(false));
+    q("#n-accords").addEventListener("click", () => rejouer(true));
+    const decaler = k => { trouve.notes.forEach(n => n.m += k); trouve.ton = devinerTon(trouve.notes); sauverTrouve(); dessinerResultat(); };
+    q("#n-bas").addEventListener("click", () => decaler(-1));
+    q("#n-haut").addEventListener("click", () => decaler(1));
+    q("#n-composer").addEventListener("click", versComposer);
+    let confirme = false;
+    q("#n-effacer").addEventListener("click", e => {
+      if (!confirme) { confirme = true; e.target.textContent = "Sûr ? Touche encore"; setTimeout(() => { confirme = false; if (e.target.isConnected) e.target.textContent = "Effacer"; }, 2500); return; }
+      arreterLectureTrouve(); trouve.notes = []; trouve.ton = null; sauverTrouve(); dessinerResultat(); e.target.textContent = "Effacer"; confirme = false; infoNotes("C'est effacé.");
+    });
+    q("#n-resultat").addEventListener("click", e => {
+      const b = e.target.closest(".n-syl"); if (!b) return; const x = trouve.notes[+b.dataset.i]; if (!x || !audio()) return;
+      jouer("tn:x", sortieDe(x.m), 0.8, { demo: true }); setTimeout(() => lacher("tn:x", { demo: true, force: true }), 450);
+    });
+    trouve.ton = devinerTon(trouve.notes);
+    dessinerResultat(); afficherDirect(null);
+    infoNotes(trouve.notes.length ? "Voici les dernières notes trouvées. Touche une note pour l'entendre." : "");
+  }
+
   // ---------- Sauvegarde dans un fichier ----------
   document.getElementById("chants-exporter").addEventListener("click", () => {
     try {
@@ -1978,7 +2360,7 @@ input[type=range]{accent-color:var(--laiton);width:150px}
       });
     });
   }
-  groupe("[data-mode]", "mode", b => b.dataset.mode, () => { finAccordPad(); arreterLecteur(); arreterArr(false); if (reglages.mode === "composer") appliquerChant(); construireScene(); });
+  groupe("[data-mode]", "mode", b => b.dataset.mode, () => { arreterMicro(); arreterLectureTrouve(); finAccordPad(); arreterLecteur(); arreterArr(false); if (reglages.mode === "composer") appliquerChant(); construireScene(); });
   groupe("[data-taille]", "taille", b => +b.dataset.taille, dessinerZones);
   groupe("[data-nom]", "nom", b => b.dataset.nom, () => { dessinerZones(); if (reglages.mode === "accords") construireScene(); remplirTonalites(); dessinerBandeau(); });
   groupe("[data-clavier]", "clavier", b => b.dataset.clavier, dessinerZones);
